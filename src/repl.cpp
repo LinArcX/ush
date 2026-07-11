@@ -84,6 +84,14 @@ Error ush::Repl::readLine(std::array<char, charsForLine>& chars)
       return clearLine();
     }
 
+    if (c == 127 || c == '\b') {
+      if (position > 0) {
+        --position;
+        chars[position] = '\0';
+      }
+      return backSpace();
+    }
+
 		// If we hit EOF, replace it with a null character and return.
 		if (c == '\n') {
 			chars[position] = '\0';
@@ -188,7 +196,7 @@ Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
 	if (pid == 0) {
 		// Child process
 		if(execvp(argv[0], argv.data()) == -1) {
-      std::print("ush --> {0} not found!\n", argv[0]);
+      std::print("\"{0}\" not found\n", argv[0]);
       // this exit from failed child process
       _exit(127);
 		}
@@ -288,6 +296,14 @@ Error ush::Repl::clearLine(void)
   //write(STDOUT_FILENO, " > ", 3);
   return Error::eClear;
 }
+
+Error ush::Repl::backSpace(void)
+{   
+  char buff[] = "\b \b";
+  write(STDOUT_FILENO, buff, sizeof(buff) - 1);
+  return Error::eClear;
+}
+ 
 
 Error ush::Repl::help(void)
 {

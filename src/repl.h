@@ -30,6 +30,7 @@ namespace ush
       Error pwd(std::string_view arg);
       Error clearScreen(void);
       Error clearLine(void);
+      Error backSpace(void);
       Error help(void);
       Error exit(void);
 
