@@ -6,7 +6,6 @@ int main(int argc, char** argv)
 
 	// Run command loop.
 	ush_loop();
-
 	// Perform any shutdown/cleanup.
 
 	return 0;

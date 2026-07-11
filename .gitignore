@@ -3,5 +3,6 @@
 ush.suo
 ush.ncb
 
-Debug/*
-Release/*
+windows/*
+
+src/breakpoints.json
