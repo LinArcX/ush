@@ -106,22 +106,12 @@ menu () {
       mkdir -p build/debug
  
       echo ">>> compiling (debug mode)"
-      bear -- cc -g -pg -O0 -DDEBUG -std=c11 -fgnu89-inline --coverage \
-          -Wformat=2 -Wall -Wextra -Wunused-function -Wpedantic -Wno-unused-parameter -Wno-implicit-function-declaration -Wno-int-conversion \
-          -Wshadow -Wwrite-strings -Wstrict-prototypes  \
-          -Wold-style-definition -Wredundant-decls -Wnested-externs -Wmissing-include-dirs -Wjump-misses-init -Wlogical-op \
-          -lGL -lglfw -lglfw -ldl -pthread -lm \
-          src/*.c -o ./build/debug/ush 
-
-      cp assets/DejaVuSans.ttf ./build/debug
-      cp assets/blender_icons.svg ./build/debug
-      cp assets/blender_icons16.png ./build/debug
-      #bear -- cc -g -pg -O0 -DDEBUG -std=c11 --coverage \
-      #  -Wformat=2 -Wall -Wextra -Wpedantic -Wno-unused-parameter -Wno-implicit-function-declaration -Wno-int-conversion \
-      #  -Wshadow -Wwrite-strings -Wstrict-prototypes  \
-      #  -Wold-style-definition -Wredundant-decls -Wnested-externs -Wmissing-include-dirs -Wjump-misses-init -Wlogical-op \
-      #  -lc -lm -lcmocka -lmagic -o ./build/debug/ush \
-      #  $(pkg-config --cflags notcurses) ./src/*.c $(pkg-config --libs notcurses) $(pkg-config --cflags --libs vips)
+      bear -- g++ -std=c++23 -g -pg -O0 -DDEBUG --coverage \
+          -Wformat=2 -Wall -Wextra -Wunused-function -Wpedantic -Wno-unused-parameter \
+          -Wshadow -Wwrite-strings  \
+          -Wredundant-decls -Wmissing-include-dirs -Wlogical-op \
+          -ldl -pthread -lm \
+          src/*.cpp -o ./build/debug/ush 
       ;;
     "run(debug)")
       clear
@@ -172,7 +162,7 @@ menu () {
       # cmock library is here: /usr/local/lib64/
       echo ">>> compiling (tests)"
       cc -g -pg -O0 -DDEBUG -std=c11 --coverage \
-        -Wformat=2 -Wall -Wextra -Wpedantic -Wno-unused-parameter -Wno-implicit-function-declaration -Wno-int-conversion \
+        -Wformat=2 -Wall -Wextra -Wpedantic -Wexceptions -fno-exceptions -Wno-unused-parameter \
         -Wshadow -Wwrite-strings -Wstrict-prototypes \
         -Wold-style-definition -Wredundant-decls -Wnested-externs -Wmissing-include-dirs -Wjump-misses-init -Wlogical-op \
         -lc -lcmocka -lmagic -o ./build/tests/usht \

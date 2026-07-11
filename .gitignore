@@ -1,8 +1,10 @@
-.vs/*
-
 ush.suo
 ush.ncb
 
+.vs/*
+build/*
+.cache/*
+garbage/*
 windows/*
-
 src/breakpoints.json
+compile_commands.json

@@ -1,12 +1,10 @@
-#include "oswrapper.h"
+#include "repl.h"
 
 int main(int argc, char** argv)
 {
-	// Load config files, if any.
+  ush::Repl repl;
+  // Load config files, if any.
 
-	// Run command loop.
-	ush_loop();
-	// Perform any shutdown/cleanup.
-
-	return 0;
+  // Run command loop.
+  return repl.loop();
 }
