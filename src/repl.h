@@ -2,7 +2,9 @@
 #define USH_REPL_H
 
 #include <array>
+#include <termios.h>
 #include <string_view>
+
 #include "error.h"
 
 constexpr uint32_t maxArgs = 64;
@@ -26,11 +28,17 @@ namespace ush
 
       Error cd(std::string_view arg);
       Error pwd(std::string_view arg);
-      Error clear(void);
+      Error clearScreen(void);
+      Error clearLine(void);
       Error help(void);
       Error exit(void);
 
+      void enableRawMode();
+      void disableRawMode();
+
     private:
+      termios original;
+      termios raw;
 
   };
 }
