@@ -18,14 +18,18 @@ int ush::Repl::loop(void)
   std::array<char[charsForArg], maxArgs> args {};
 
   while(true) {
-  std::print("> ");
+    // reset array content
+    chars = {};
+    args = {};
+
+    std::print("> ");
 
     if (Error::eError == readLine(chars)) {
-      printf("readLine() error");
+      std::print("readLine() error");
       return -1;
     }
     if (Error::eError == splitArgs(chars, args)) {
-      printf("splitLine() error");
+      std::print("splitLine() error");
       return -1;
     }
     Error e = execute(args);
@@ -33,7 +37,7 @@ int ush::Repl::loop(void)
       return 0;
     }
     if (Error::eError == e) {
-      printf("execute() error");
+      std::print("execute() error\n");
       return -1;
     }
   }
@@ -110,46 +114,134 @@ Error ush::Repl::execute(std::array<char[charsForArg], maxArgs>& args)
 	return launch(args);
 }
 
-
 Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
 {
-	//int status;
-	//pid_t pid, wpid;
+#if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+  STARTUPINFO si;
+  PROCESS_INFORMATION pi;
 
-	//pid = fork();
-	//if (pid == 0) {
-	//	// Child process
-	//	if (execvp(args[0], args) == -1) {
-	//		perror("ush");
-	//	}
-	//	exit(EXIT_FAILURE);
-	//} else if (pid < 0) {
-	//	// Error forking
-	//	perror("ush");
-	//} else {
-	//	// Parent process
-	//	do {
-	//		wpid = waitpid(pid, &status, WUNTRACED);
-	//	} while (!WIFEXITED(status) && !WIFSIGNALED(status));
-	//}
+  ZeroMemory(&si, sizeof(si));
+  si.cb = sizeof(si);
+  ZeroMemory(&pi, sizeof(pi));
+
+  if(!CreateProcess(NULL, args[0], NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    switch(GetLastError()) {
+      case ERROR_INVALID_PARAMETER:
+        std::print( "CreateProcess failed (%d).\n", GetLastError() );
+        break;
+      case ERROR_FILE_NOT_FOUND:
+        std::print("Unknown internal or external command.\n");
+        break;
+    }
+    return Error::eError;
+  }
+
+  WaitForSingleObject( pi.hProcess, INFINITE );
+
+	CloseHandle( pi.hProcess );
+	CloseHandle( pi.hThread );
+#elif __linux__
+	int status;
+	pid_t pid;
+
+  std::array<char*, maxArgs + 1> argv{};
+
+  std::size_t argc = 1; /* number of arguments */
+
+  for (std::size_t i = 0; i < argc; ++i)
+    argv[i] = args[i];
+
+  argv[argc] = nullptr;
+
+	pid = fork();
+	if (pid == 0) {
+		// Child process
+		if(execvp(argv[0], argv.data()) == -1) {
+      std::print("ush::launch() --> execvp() failed. argv[0]: {0}\n", argv[0]);
+      return Error::eError;
+		}
+	} else if (pid < 0) {
+    std::print("ush::launch() --> pid: {0}, error in forking\n", pid);
+    return Error::eError;
+	} else {
+		// Parent process
+		do {
+			waitpid(pid, &status, WUNTRACED);
+		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+	}
+#endif
 	return Error::eSuccess;
 }
 
 Error ush::Repl::cd(std::string_view arg)
 {
-	if (chdir(arg.data()) != 0) {
-		  perror("ush");
+#if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+  if(!SetCurrentDirectory(args)) {
+    std::print("cd failed (%d)\n", GetLastError());
+		return Error::eError;
   }
+#elif __linux__
+  if (chdir(arg.data()) != 0) {
+    std::print("ush");
+		  return Error::eError;
+  }
+#endif
 	return Error::eSuccess;
 }
 
 Error ush::Repl::pwd(std::string_view arg)
 {
+#if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+  TCHAR path[MAX_PATH];
+  GetCurrentDirectory(MAX_PATH, path);
+  std::cout << path << std::endl;
+#elif __linux__
+
+#endif
   return Error::eSuccess;
 }
 
 Error ush::Repl::clear(void)
 {
+#if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+  HANDLE hStdout;
+  CHAR_INFO fill;
+  COORD scrollTarget;
+  SMALL_RECT scrollRect;
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+
+  hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+
+  // Get the number of character cells in the current buffer.
+  if (!GetConsoleScreenBufferInfo(hStdout, &csbi)) {
+    return Error::eError;
+  }
+
+  // Scroll the rectangle of the entire buffer.
+  scrollRect.Left = 0;
+  scrollRect.Top = 0;
+  scrollRect.Right = csbi.dwSize.X;
+  scrollRect.Bottom = csbi.dwSize.Y;
+
+  // Scroll it upwards off the top of the buffer with a magnitude of the entire height.
+  scrollTarget.X = 0;
+  scrollTarget.Y = (SHORT)(0 - csbi.dwSize.Y);
+
+  // Fill with empty spaces with the buffer's default text attribute.
+  fill.Char.UnicodeChar = TEXT(' ');
+  fill.Attributes = csbi.wAttributes;
+
+  // Do the scroll
+  ScrollConsoleScreenBuffer(hStdout, &scrollRect, NULL, scrollTarget, &fill);
+
+  // Move the cursor to the top left corner too.
+  csbi.dwCursorPosition.X = 0;
+  csbi.dwCursorPosition.Y = 0;
+
+  SetConsoleCursorPosition(hStdout, csbi.dwCursorPosition);
+#elif __linux__
+  std::print("\033[3J\033[2J\033[H");
+#endif
   return Error::eSuccess;
 }
  
@@ -163,106 +255,3 @@ Error ush::Repl::exit(void)
 {
   return Error::eExit;
 }
-
-#if defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-int launch(char **args)
-{	
-	//define something for Windows (32-bit and 64-bit, this part is common)
-	STARTUPINFO si;
-	PROCESS_INFORMATION pi;
-
-	ZeroMemory( &si, sizeof(si) );
-	si.cb = sizeof(si);
-	ZeroMemory( &pi, sizeof(pi) );
-
-	if(!CreateProcess(NULL, args[0], NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
-	{
-		switch(GetLastError())
-		{
-			case ERROR_INVALID_PARAMETER:
-				printf( "CreateProcess failed (%d).\n", GetLastError() );
-				break;
-			case ERROR_FILE_NOT_FOUND:
-				printf("Unknown internal or external command.\n");
-				break;
-		}
-		return -1;
-	}
-
-	WaitForSingleObject( pi.hProcess, INFINITE );
-
-	CloseHandle( pi.hProcess );
-	CloseHandle( pi.hThread );
-	return 1;
-}
-
-int ush_cd(char **args)
-{
-    if (args[1] == NULL) 
-    {
-		fprintf(stderr, "ush: expected argument to \"cd\"\n");
-	} 
-    else
-    {
-		if(!SetCurrentDirectory(args[1]))
-		{
-			printf("cd failed (%d)\n", GetLastError());
-		}
-    }
-	return 1;
-}
-
-void clear(HANDLE hConsole)
-{
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    SMALL_RECT scrollRect;
-    COORD scrollTarget;
-    CHAR_INFO fill;
-
-    // Get the number of character cells in the current buffer.
-    if (!GetConsoleScreenBufferInfo(hConsole, &csbi))
-    {
-        return;
-    }
-
-    // Scroll the rectangle of the entire buffer.
-    scrollRect.Left = 0;
-    scrollRect.Top = 0;
-    scrollRect.Right = csbi.dwSize.X;
-    scrollRect.Bottom = csbi.dwSize.Y;
-
-    // Scroll it upwards off the top of the buffer with a magnitude of the entire height.
-    scrollTarget.X = 0;
-    scrollTarget.Y = (SHORT)(0 - csbi.dwSize.Y);
-
-    // Fill with empty spaces with the buffer's default text attribute.
-    fill.Char.UnicodeChar = TEXT(' ');
-    fill.Attributes = csbi.wAttributes;
-
-    // Do the scroll
-    ScrollConsoleScreenBuffer(hConsole, &scrollRect, NULL, scrollTarget, &fill);
-
-    // Move the cursor to the top left corner too.
-    csbi.dwCursorPosition.X = 0;
-    csbi.dwCursorPosition.Y = 0;
-
-    SetConsoleCursorPosition(hConsole, csbi.dwCursorPosition);
-}
-
-int ush_clear(char **args)
-{
-	HANDLE hStdout;
-    hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-    clear(hStdout);
-	return 1;
-}
-
-int ush_pwd(char **args)
-{
-	TCHAR path[MAX_PATH];
-	GetCurrentDirectory(MAX_PATH, path);
-	std::cout << path << std::endl;
-	return 1;
-}
-
-#endif
