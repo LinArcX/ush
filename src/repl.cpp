@@ -171,11 +171,12 @@ ush::Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
 
   std::array<char*, maxArgs + 1> argv{};
 
-  std::size_t argc = 1; /* number of arguments */
+  std::size_t argc = 0;
 
-  for (std::size_t i = 0; i < argc; ++i)
-    argv[i] = args[i];
-
+  while (argc < maxArgs && args[argc][0] != '\0') {
+    argv[argc] = args[argc];
+    ++argc;
+  }
   argv[argc] = nullptr;
 
   disableRawMode();

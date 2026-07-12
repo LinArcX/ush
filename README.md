@@ -19,7 +19,23 @@ But before compiling you need some tools:
 - gnu-make(or visual-studio)
 
 # TODO
-- [] let prompt change from `ush.h`.
+- [ ] ignore white spaces and don't put them into chars and args array.
+- [ ] Ctrl+Right -> go to next word.
+- [ ] Ctrl+Left -> go to previous word.
+- [ ] Ctrl+Shift+Right -> select next word.
+- [ ] Ctrl+Shift+Left -> select previous word.
+- [ ] Ctrl+Shift+c -> Copy selected text or current character and put it in clipboard.
+- [ ] Ctrl+Shift+v -> Paste from clipboard to current location.
+- [ ] implement [ELN](https://github.com/leo-arch/clifm/wiki/Common-Operations#elns) inspired by clifm.
+- [ ] put history in: $HOME/.ush_history
+- [ ] search through history with Up/Down keys.
+- [ ] Ctrl+r -> search recursively in history.
+- [ ] press tab offer auto-completion menu.
+- [ ] just typipng any character, will show as a hint the aviable command or avaiable history.
+- [ ] implement ush language. (which will be use in ush scripts and config file)
+  - [ ] implement config file in: $HOME/.ushrc
+    - [ ] aiblity to change prompt.
+      - [ ] add git status to prompt.
 
 # Sources of inspiration
 1. [write-a-shell-in-c](https://brennan.io/2015/01/16/write-a-shell-in-c/)
