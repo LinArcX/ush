@@ -115,12 +115,6 @@ ush::Error ush::Repl::splitArgs(const std::array<char, charsForLine>& chars,
 ush::Error ush::Repl::execute(std::array<char[charsForArg], maxArgs>& args)
 {
   // search in builtin commands first
-  if (std::string_view(args[0]) == std::string_view("cd")) {
-	  return cd(args[1]);
-	}
-  if (std::string_view(args[0]) == std::string_view("pwd")) {
-	  return pwd(args[1]);
-	}
 	if (std::string_view(args[0]) == std::string_view("clear")) {
 	  return clearScreen();
 	}
@@ -193,34 +187,6 @@ ush::Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
 	}
 #endif
 	return Error::eSuccess;
-}
-
-ush::Error ush::Repl::cd(std::string_view arg)
-{
-#if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-  if(!SetCurrentDirectory(args)) {
-    std::print("cd failed (%d)\n", GetLastError());
-		return Error::eError;
-  }
-#elif __linux__
-  if (chdir(arg.data()) != 0) {
-    std::print("ush");
-		  return Error::eError;
-  }
-#endif
-	return Error::eSuccess;
-}
-
-ush::Error ush::Repl::pwd(std::string_view arg)
-{
-#if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-  TCHAR path[MAX_PATH];
-  GetCurrentDirectory(MAX_PATH, path);
-  std::cout << path << std::endl;
-#elif __linux__
-
-#endif
-  return Error::eSuccess;
 }
 
 ush::Error ush::Repl::clearScreen(void)

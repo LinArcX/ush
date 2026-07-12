@@ -27,8 +27,6 @@ namespace ush
       Error execute(std::array<char[charsForArg], maxArgs>& args);
       Error launch(std::array<char[charsForArg], maxArgs>& args);
 
-      Error cd(std::string_view arg);
-      Error pwd(std::string_view arg);
       Error clearScreen(void);
       Error clearLine(void);
       Error help(void);

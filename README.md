@@ -19,10 +19,6 @@ But before compiling you need some tools:
 - gnu-make(or visual-studio)
 
 # TODO
-- [] implement `pwd`.
-- [] implement `mkdir`.
-- [] implement `touch`.
-- [] implement `ls`.
 - [] let prompt change from `ush.h`.
 
 # Sources of inspiration
@@ -30,5 +26,3 @@ But before compiling you need some tools:
 
 # License
 ![License](https://img.shields.io/github/license/LinArcX/ush.svg)
-
-
