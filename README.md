@@ -27,11 +27,19 @@ But before compiling you need some tools:
 - [ ] Ctrl+Shift+c -> Copy selected text or current character and put it in clipboard.
 - [ ] Ctrl+Shift+v -> Paste from clipboard to current location.
 - [ ] implement [ELN](https://github.com/leo-arch/clifm/wiki/Common-Operations#elns) inspired by clifm.
-- [ ] put history in: $HOME/.ush_history
-- [ ] search through history with Up/Down keys.
-- [ ] Ctrl+r -> search recursively in history.
+
+- [ ] put command history in: $HOME/.config/ush/history/commands
+  - [ ] UP -> go to next command in history.
+  - [ ] Down -> go to previous command in history
+  - [ ] Ctrl+r -> search recursively in history.
+
+- [ ] put directory history in: $HOME/.config/ush/history/dirs
+  - [ ] Ctrl+j -> Go to next directory in history
+  - [ ] Ctrl+k -> Go to previous directory in history
+
 - [ ] press tab offer auto-completion menu.
 - [ ] just typipng any character, will show as a hint the aviable command or avaiable history.
+
 - [ ] implement ush language. (which will be use in ush scripts and config file)
   - [ ] implement config file in: $HOME/.ushrc
     - [ ] aiblity to change prompt.

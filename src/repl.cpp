@@ -61,6 +61,22 @@ ush::Error ush::Repl::readLine(std::array<char, charsForLine>& chars)
   write(STDOUT_FILENO, " > ", 3);
 	
   while (read(STDIN_FILENO, &c, 1) == 1) {
+    // Space
+    if (c == 32) {
+      write(STDOUT_FILENO, " ", 1);
+      continue;
+    }
+
+    // BakcSpace c == '\b'
+    if (c == 127) {
+      if (position > 0) {
+        --position;
+        chars[position] = '\0';
+        write(STDOUT_FILENO, "\b \b", 3);
+      }
+      continue;
+    }
+
     // Ctrl-l
     if (c == 12) {
       return clearScreen();
@@ -71,16 +87,6 @@ ush::Error ush::Repl::readLine(std::array<char, charsForLine>& chars)
       position = 0;
       chars.fill('\0');
       return clearLine();
-    }
-
-    // BakcSpace
-    if (c == 127) { // c == '\b'
-      if (position > 0) {
-        --position;
-        chars[position] = '\0';
-        write(STDOUT_FILENO, "\b \b", 3);
-      }
-      continue;
     }
 
 		// If we hit EOF, replace it with a null character and return.

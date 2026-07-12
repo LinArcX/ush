@@ -31,12 +31,13 @@ namespace ush
       [[nodiscard]] Error help(void);
       [[nodiscard]] Error exit(void);
 
-      void enableRawMode();
-      void disableRawMode();
-
     private:
       termios original;
       termios raw;
+
+      void enableRawMode();
+      void disableRawMode();
+
       static void SIGINTHandler(int signal);
   };
 }
