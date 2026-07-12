@@ -38,6 +38,7 @@ namespace ush
     private:
       termios original;
       termios raw;
+      static void SIGINTHandler(int signal);
   };
 }
 #endif // USH_REPL_H

@@ -5,15 +5,25 @@
 #include <unistd.h>
 
 #ifdef __linux__
+#include <csignal>
 #include <sys/wait.h>
 #include <sys/types.h>
 #elif __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 #include <Windows.h>
 #endif
 
+void ush::Repl::SIGINTHandler(int signal)
+{
+  write(STDOUT_FILENO, "\r\n", 2);
+}
+
 ush::Repl::Repl()
 {
   enableRawMode();
+
+  // SIGINIT is disabled in ush main process, and just child process are allowed to have SIGINIT.
+  // When it happens in a child-process, we exit from it and we just go to next line ready for another command in ush.
+  std::signal(SIGINT, ush::Repl::SIGINTHandler);
 }
 
 ush::Repl::~Repl()
@@ -168,12 +178,14 @@ ush::Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
 
   argv[argc] = nullptr;
 
+  disableRawMode();
 	pid = fork();
 	if (pid == 0) {
+		// TODO: enable Ctrl-C to exit from child process
 		// Child process
 		if(execvp(argv[0], argv.data()) == -1) {
       std::print("\"{0}\" not found\n", argv[0]);
-      // this exit from failed child process
+      // exit from failed child process
       _exit(127);
 		}
 	} else if (pid < 0) {
@@ -183,6 +195,7 @@ ush::Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
 		// Parent process
 		do {
 			waitpid(pid, &status, WUNTRACED);
+	    enableRawMode();
 		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 	}
 #endif
