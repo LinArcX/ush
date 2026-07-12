@@ -19,12 +19,37 @@ namespace ush
       Repl();
       ~Repl();
 
+      /**
+       * @brief REPL of ush. during this loop, you can:
+       * 1. send keyboard events
+       * 2. type a command and execute it
+       * 3. repeate this process
+       *
+       * @return 0 if Error::eExit fires
+       */
       [[nodiscard]] int loop(void);
-      [[nodiscard]] Error readLine(std::array<char, charsForLine>& line);
-      [[nodiscard]] Error splitArgs(const std::array<char, charsForLine>& chars,
+
+      /**
+       * @brief 1. handle keyboard events like Ctrl-l (clear screen), Ctrl-u (clear line)
+       *        2. populate input characters and make them ready for prepareCommandAndArgs()
+       *
+       * @param chars
+       * @return Error::eSuccess when press Enter
+       */
+      [[nodiscard]] Error handleEventsAndPopulateChars(std::array<char, charsForLine>& chars);
+
+      /**
+       * @brief parse characters, extract commands and args from it
+       *
+       * @param chars an array of all input characters comes from handleEventsAndPopulateChars()
+       * @param args an array contains command and args
+       * @return Error::eSuccess if parsing is ok 
+       */
+      [[nodiscard]] Error parseCharsAndPopulateCommandsArgs(const std::array<char, charsForLine>& chars,
         std::array<char[charsForArg], maxArgs>& args);
+
       [[nodiscard]] Error execute(std::array<char[charsForArg], maxArgs>& args);
-      [[nodiscard]] Error launch(std::array<char[charsForArg], maxArgs>& args);
+      [[nodiscard]] Error launchBinary(std::array<char[charsForArg], maxArgs>& args);
 
       [[nodiscard]] Error clearScreen(void);
       [[nodiscard]] Error clearLine(void);

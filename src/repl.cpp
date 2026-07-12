@@ -42,11 +42,11 @@ int ush::Repl::loop(void)
     chars = {};
     args = {};
 
-    Error e = readLine(chars);
+    Error e = handleEventsAndPopulateChars(chars);
     if (Error::eClear == e) {
       continue;
     }
-    e = splitArgs(chars, args);
+    e = parseCharsAndPopulateCommandsArgs(chars, args);
     e = execute(args);
     if (Error::eExit == e) {
       return 0;
@@ -54,7 +54,7 @@ int ush::Repl::loop(void)
   }
 }
 
-ush::Error ush::Repl::readLine(std::array<char, charsForLine>& chars)
+ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine>& chars)
 {
 	char c ;
 	uint32_t position = 0U;
@@ -108,7 +108,7 @@ ush::Error ush::Repl::readLine(std::array<char, charsForLine>& chars)
   return Error::eSuccess;
 }
 
-ush::Error ush::Repl::splitArgs(const std::array<char, charsForLine>& chars,
+ush::Error ush::Repl::parseCharsAndPopulateCommandsArgs(const std::array<char, charsForLine>& chars,
   std::array<char[charsForArg], maxArgs>& args)
 {
   uint32_t j = 0U;
@@ -143,10 +143,10 @@ ush::Error ush::Repl::execute(std::array<char[charsForArg], maxArgs>& args)
 	}
 	
   // it's not a builtint. let's launch it as a separate process.
-	return launch(args);
+	return launchBinary(args);
 }
 
-ush::Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
+ush::Error ush::Repl::launchBinary(std::array<char[charsForArg], maxArgs>& args)
 {
 #if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
   STARTUPINFO si;
