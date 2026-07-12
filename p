@@ -107,13 +107,20 @@ menu () {
  
       echo ">>> compiling (debug mode)"
       bear -- g++ -std=c++23 -g -pg -O0 -DDEBUG --coverage \
-          -Wformat=2 -Wall -Wextra -Wunused-function -Wpedantic -Wno-unused-parameter \
-          -Wshadow -Wwrite-strings  \
+          -Wformat=2 -Wall -Werror -Wextra -Wunused-function -Wpedantic -Wno-unused-parameter \
+          -Wshadow -Wwrite-strings -Wunused-result  \
           -Wredundant-decls -Wmissing-include-dirs -Wlogical-op \
           -ldl -pthread -lm \
           src/*.cpp -o ./build/debug/ush 
 
-      mpg123 /home/$USER/VoidConf/assets/success.mp3 > /dev/null 2>&1 
+      if [ $? -eq 1 ]; then
+        # error
+        mpg123 /home/$USER/VoidConf/assets/error2.mp3 > /dev/null 2>&1 
+      else
+        # success
+        mpg123 /home/$USER/VoidConf/assets/success.mp3 > /dev/null 2>&1 
+      fi
+
       ;;
     "run(debug)")
       clear

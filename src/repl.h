@@ -3,7 +3,6 @@
 
 #include <array>
 #include <termios.h>
-#include <string_view>
 
 #include "error.h"
 
@@ -20,17 +19,17 @@ namespace ush
       Repl();
       ~Repl();
 
-      int loop(void);
-      Error readLine(std::array<char, charsForLine>& line);
-      Error splitArgs(const std::array<char, charsForLine>& chars,
+      [[nodiscard]] int loop(void);
+      [[nodiscard]] Error readLine(std::array<char, charsForLine>& line);
+      [[nodiscard]] Error splitArgs(const std::array<char, charsForLine>& chars,
         std::array<char[charsForArg], maxArgs>& args);
-      Error execute(std::array<char[charsForArg], maxArgs>& args);
-      Error launch(std::array<char[charsForArg], maxArgs>& args);
+      [[nodiscard]] Error execute(std::array<char[charsForArg], maxArgs>& args);
+      [[nodiscard]] Error launch(std::array<char[charsForArg], maxArgs>& args);
 
-      Error clearScreen(void);
-      Error clearLine(void);
-      Error help(void);
-      Error exit(void);
+      [[nodiscard]] Error clearScreen(void);
+      [[nodiscard]] Error clearLine(void);
+      [[nodiscard]] Error help(void);
+      [[nodiscard]] Error exit(void);
 
       void enableRawMode();
       void disableRawMode();

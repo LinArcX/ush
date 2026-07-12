@@ -3,6 +3,7 @@
 #include <print>
 #include <stdio.h>
 #include <unistd.h>
+#include <string_view>
 
 #ifdef __linux__
 #include <csignal>
