@@ -11,19 +11,14 @@
 #include <Windows.h>
 #endif
 
-void ush::Repl::enableRawMode()
+ush::Repl::Repl()
 {
-  tcgetattr(STDIN_FILENO, &original);
-
-  raw = original;
-  raw.c_lflag &= ~(ICANON);
-
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+  enableRawMode();
 }
 
-void ush::Repl::disableRawMode()
+ush::Repl::~Repl()
 {
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &original);
+  disableRawMode();
 }
 
 int ush::Repl::loop(void)
@@ -32,7 +27,7 @@ int ush::Repl::loop(void)
   std::array<char[charsForArg], maxArgs> args {};
 
   while(true) {
-    // reset array content
+    // reset arrays
     chars = {};
     args = {};
 
@@ -40,66 +35,53 @@ int ush::Repl::loop(void)
     if (Error::eClear == e) {
       continue;
     }
-    //if (Error::eError == e) {
-    //  std::print("readLine() error");
-    //  return -1;
-    //}
-
     e = splitArgs(chars, args);
-    //if (Error::eError == e) {
-    //  std::print("splitArgs() error");
-    //  return -1;
-    //}
-
     e = execute(args);
     if (Error::eExit == e) {
       return 0;
     }
-    //if (Error::eError == e) {
-    //  //std::print("execute() error\n");
-    //  return -1;
-    //}
   }
 }
 
-Error ush::Repl::readLine(std::array<char, charsForLine>& chars)
+ush::Error ush::Repl::readLine(std::array<char, charsForLine>& chars)
 {
-	int c = 0U;
+	char c ;
 	uint32_t position = 0U;
-
   write(STDOUT_FILENO, " > ", 3);
 	
-  constexpr char CTRL_U = 'U' & 0x1F;
-  constexpr char CTRL_L = 'L' & 0x1F;
-
   while (read(STDIN_FILENO, &c, 1) == 1) {
-    if (c == CTRL_L) {
+    // Ctrl-l
+    if (c == 12) {
       return clearScreen();
     }
 
-    if (c == CTRL_U) {
+    // Ctrl-u
+    if (c == 21) { 
       position = 0;
       chars.fill('\0');
-
       return clearLine();
     }
 
-    if (c == 127 || c == '\b') {
+    // BakcSpace
+    if (c == 127) { // c == '\b'
       if (position > 0) {
         --position;
         chars[position] = '\0';
+        write(STDOUT_FILENO, "\b \b", 3);
       }
-      return backSpace();
+      continue;
     }
 
 		// If we hit EOF, replace it with a null character and return.
-		if (c == '\n') {
+		if (c == '\r' || c == '\n') {
+			write(STDOUT_FILENO, "\r\n", 2);
 			chars[position] = '\0';
 			return Error::eSuccess;
 		} else {
 			chars[position] = c;
 		}
 		position++;
+		write(STDOUT_FILENO, &c, 1);
 
 		// If we have exceeded the buffer, return error
 		if (position >= charsForLine) {
@@ -109,7 +91,7 @@ Error ush::Repl::readLine(std::array<char, charsForLine>& chars)
   return Error::eSuccess;
 }
 
-Error ush::Repl::splitArgs(const std::array<char, charsForLine>& chars,
+ush::Error ush::Repl::splitArgs(const std::array<char, charsForLine>& chars,
   std::array<char[charsForArg], maxArgs>& args)
 {
   uint32_t j = 0U;
@@ -130,7 +112,7 @@ Error ush::Repl::splitArgs(const std::array<char, charsForLine>& chars,
   return Error::eSuccess;
 }
 
-Error ush::Repl::execute(std::array<char[charsForArg], maxArgs>& args)
+ush::Error ush::Repl::execute(std::array<char[charsForArg], maxArgs>& args)
 {
   // search in builtin commands first
   if (std::string_view(args[0]) == std::string_view("cd")) {
@@ -153,7 +135,7 @@ Error ush::Repl::execute(std::array<char[charsForArg], maxArgs>& args)
 	return launch(args);
 }
 
-Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
+ush::Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
 {
 #if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
   STARTUPINFO si;
@@ -213,7 +195,7 @@ Error ush::Repl::launch(std::array<char[charsForArg], maxArgs>& args)
 	return Error::eSuccess;
 }
 
-Error ush::Repl::cd(std::string_view arg)
+ush::Error ush::Repl::cd(std::string_view arg)
 {
 #if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
   if(!SetCurrentDirectory(args)) {
@@ -229,7 +211,7 @@ Error ush::Repl::cd(std::string_view arg)
 	return Error::eSuccess;
 }
 
-Error ush::Repl::pwd(std::string_view arg)
+ush::Error ush::Repl::pwd(std::string_view arg)
 {
 #if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
   TCHAR path[MAX_PATH];
@@ -241,7 +223,7 @@ Error ush::Repl::pwd(std::string_view arg)
   return Error::eSuccess;
 }
 
-Error ush::Repl::clearScreen(void)
+ush::Error ush::Repl::clearScreen(void)
 {
 #if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
   HANDLE hStdout;
@@ -282,14 +264,13 @@ Error ush::Repl::clearScreen(void)
 #elif __linux__
   //std::print("\033[3J\033[2J\033[H");
   //std::fflush(stdout);
-
   constexpr char clear_seq[] = "\x1b[3J\x1b[2J\x1b[H";
   write(STDOUT_FILENO, clear_seq, sizeof(clear_seq) - 1);
 #endif
   return Error::eClear;
 }
  
-Error ush::Repl::clearLine(void)
+ush::Error ush::Repl::clearLine(void)
 {   
   write(STDOUT_FILENO, "\r", 1);
   write(STDOUT_FILENO, "\x1b[2K", 4);
@@ -297,21 +278,35 @@ Error ush::Repl::clearLine(void)
   return Error::eClear;
 }
 
-Error ush::Repl::backSpace(void)
-{   
-  char buff[] = "\b \b";
-  write(STDOUT_FILENO, buff, sizeof(buff) - 1);
-  return Error::eClear;
-}
- 
-
-Error ush::Repl::help(void)
+ush::Error ush::Repl::help(void)
 {
   std::print("Welcome to unified shell(ush) ***");
   return Error::eSuccess;
 }
 
-Error ush::Repl::exit(void)
+ush::Error ush::Repl::exit(void)
 {
   return Error::eExit;
+}
+
+void ush::Repl::enableRawMode()
+{
+  tcgetattr(STDIN_FILENO, &original);
+
+  raw = original;
+  //raw.c_lflag &= ~(ICANON | ECHO | ECHOCTL); // IEXTEN | ISIG
+  raw.c_lflag &= ~(ICANON | ECHO | IEXTEN | ISIG);
+  //raw.c_iflag &= ~(IXON | ICRNL); // BRKINT | INPCK | ISTRIP
+  raw.c_iflag &= ~(IXON | ICRNL | BRKINT | INPCK | ISTRIP);
+  // raw.c_oflag &= ~(OPOST);
+  raw.c_cflag |= CS8;
+
+  raw.c_cc[VMIN] = 1;
+  raw.c_cc[VTIME] = 0;
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
+
+void ush::Repl::disableRawMode()
+{
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &original);
 }

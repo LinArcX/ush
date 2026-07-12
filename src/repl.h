@@ -17,12 +17,13 @@ namespace ush
   class Repl
   {
     public:
-      int loop(void);
+      Repl();
+      ~Repl();
 
+      int loop(void);
       Error readLine(std::array<char, charsForLine>& line);
       Error splitArgs(const std::array<char, charsForLine>& chars,
         std::array<char[charsForArg], maxArgs>& args);
-        //std::array<char[charsForArg], maxArgs> args);
       Error execute(std::array<char[charsForArg], maxArgs>& args);
       Error launch(std::array<char[charsForArg], maxArgs>& args);
 
@@ -30,7 +31,6 @@ namespace ush
       Error pwd(std::string_view arg);
       Error clearScreen(void);
       Error clearLine(void);
-      Error backSpace(void);
       Error help(void);
       Error exit(void);
 
@@ -40,7 +40,6 @@ namespace ush
     private:
       termios original;
       termios raw;
-
   };
 }
 #endif // USH_REPL_H

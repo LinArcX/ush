@@ -112,6 +112,8 @@ menu () {
           -Wredundant-decls -Wmissing-include-dirs -Wlogical-op \
           -ldl -pthread -lm \
           src/*.cpp -o ./build/debug/ush 
+
+      mpg123 /home/$USER/VoidConf/assets/success.mp3 > /dev/null 2>&1 
       ;;
     "run(debug)")
       clear
