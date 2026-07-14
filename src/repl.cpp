@@ -43,10 +43,15 @@ int ush::Repl::loop(void)
     args = {};
 
     Error e = handleEventsAndPopulateChars(chars);
-    if (Error::eClear == e) {
+    if (e != Error::eSuccess) {
       continue;
     }
+
     e = parseCharsAndPopulateCommandsArgs(chars, args);
+    if (e != Error::eSuccess) {
+      continue;
+    }
+ 
     e = execute(args);
     if (Error::eExit == e) {
       return 0;
@@ -61,13 +66,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine
   write(STDOUT_FILENO, " > ", 3);
 	
   while (read(STDIN_FILENO, &c, 1) == 1) {
-    // Space
-    if (c == 32) {
-      write(STDOUT_FILENO, " ", 1);
-      continue;
-    }
-
-    // BakcSpace c == '\b'
+    // BakcSpace ('\b' or 127)
     if (c == 127) {
       if (position > 0) {
         --position;
@@ -84,15 +83,15 @@ ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine
 
     // Ctrl-u
     if (c == 21) { 
-      position = 0;
-      chars.fill('\0');
+      //position = 0;
+      //chars.fill('\0');
       return clearLine();
     }
 
 		// If we hit EOF, replace it with a null character and return.
 		if (c == '\r' || c == '\n') {
-			write(STDOUT_FILENO, "\r\n", 2);
 			chars[position] = '\0';
+			write(STDOUT_FILENO, "\r\n", 2);
 			return Error::eSuccess;
 		} else {
 			chars[position] = c;
@@ -100,33 +99,40 @@ ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine
 		position++;
 		write(STDOUT_FILENO, &c, 1);
 
-		// If we have exceeded the buffer, return error
+		// If we have exceeded the buffer, we just clear the line
 		if (position >= charsForLine) {
-		  return Error::eError;
+		  return clearLine();
 		}
   }
-  return Error::eSuccess;
+  // unknow error
+  return clearLine();
 }
 
 ush::Error ush::Repl::parseCharsAndPopulateCommandsArgs(const std::array<char, charsForLine>& chars,
   std::array<char[charsForArg], maxArgs>& args)
 {
-  uint32_t j = 0U;
+  bool seenChar = false;
   uint32_t currentArg = 0U;
-  for (size_t i = 0; i < charsForArg; i++) {
+
+  for (size_t i = 0, j = 0; i < charsForArg; i++) {
     char currentChar = chars[i];
+
     if (currentChar == '\0') {
       return Error::eSuccess;
     }
     if (isspace(currentChar)) {
-      currentArg++;
-      j = 0;
+      if (seenChar == true) {
+        currentArg++;
+        j = 0;
+        seenChar = false;
+      }
     }
     else if (isalnum(currentChar) || currentChar == '-') {
+      seenChar = true;
       args[currentArg][j++] = currentChar;
     }
   }
-  return Error::eSuccess;
+  return Error::eError;
 }
 
 ush::Error ush::Repl::execute(std::array<char[charsForArg], maxArgs>& args)
@@ -254,7 +260,7 @@ ush::Error ush::Repl::clearScreen(void)
   constexpr char clear_seq[] = "\x1b[3J\x1b[2J\x1b[H";
   write(STDOUT_FILENO, clear_seq, sizeof(clear_seq) - 1);
 #endif
-  return Error::eClear;
+  return Error::eClearScreen;
 }
  
 ush::Error ush::Repl::clearLine(void)
@@ -262,7 +268,7 @@ ush::Error ush::Repl::clearLine(void)
   write(STDOUT_FILENO, "\r", 1);
   write(STDOUT_FILENO, "\x1b[2K", 4);
   //write(STDOUT_FILENO, " > ", 3);
-  return Error::eClear;
+  return Error::eClearLine;
 }
 
 ush::Error ush::Repl::help(void)

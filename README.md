@@ -19,7 +19,7 @@ But before compiling you need some tools:
 - gnu-make(or visual-studio)
 
 # TODO
-- [ ] ignore white spaces and don't put them into chars and args array.
+- [x] ignore white spaces and don't put them into chars and args array.
 - [ ] Ctrl+Right -> go to next word.
 - [ ] Ctrl+Left -> go to previous word.
 - [ ] Ctrl+Shift+Right -> select next word.

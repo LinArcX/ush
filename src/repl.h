@@ -41,6 +41,11 @@ namespace ush
       /**
        * @brief parse characters, extract commands and args from it
        *
+       * @example 
+       *                      ls     -l     
+       *        - any space before first charachter should be discard.
+       *        - any space between first word and next word should be discard also.
+       *          - but we need to increment arguments by one.
        * @param chars an array of all input characters comes from handleEventsAndPopulateChars()
        * @param args an array contains command and args
        * @return Error::eSuccess if parsing is ok 
