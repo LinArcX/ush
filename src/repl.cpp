@@ -61,21 +61,21 @@ int ush::Repl::loop(void)
 
 ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine>& chars)
 {
-	char c ;
-	uint32_t position = 0U;
+  //// detect keys in raw mode
+  //int c = 0U;
+  //while (read(STDIN_FILENO, &c, 1) == 1) {
+  //  printf("char: %c, decimal: %d hex: %02X\n",
+  //      c,
+  //      (unsigned char)c,
+  //      (unsigned char)c);
+  //}
+
+	char c;
+	uint32_t charPosition = 0U;
+	uint32_t cursorPosition = 0U;
   write(STDOUT_FILENO, " > ", 3);
 	
   while (read(STDIN_FILENO, &c, 1) == 1) {
-    // BakcSpace ('\b' or 127)
-    if (c == 127) {
-      if (position > 0) {
-        --position;
-        chars[position] = '\0';
-        write(STDOUT_FILENO, "\b \b", 3);
-      }
-      continue;
-    }
-
     // Ctrl-l
     if (c == 12) {
       return clearScreen();
@@ -83,24 +83,158 @@ ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine
 
     // Ctrl-u
     if (c == 21) { 
-      //position = 0;
-      //chars.fill('\0');
       return clearLine();
+    }
+
+    // BakcSpace ('\b' or 127)
+    if (c == 127) {
+      if (charPosition > 0) {
+        --cursorPosition;
+        write(STDOUT_FILENO, "\b \b", 3);
+
+        --charPosition;
+        chars[charPosition] = '\0';
+      }
+      continue;
+    }
+
+    if (c == 27 ) { // ESC or \x1b
+      char seq[2];
+
+      if (read(STDIN_FILENO, &seq[0], 1) != 1)
+        continue;
+
+      if (read(STDIN_FILENO, &seq[1], 1) != 1)
+        continue;
+
+      if (seq[0] == '[') {
+        // Up - previous history
+        if (seq[1] == 'A') {
+          continue;
+        }
+
+        // Down - next history
+        if (seq[1] == 'B') {
+          continue;
+        }
+
+        // Right - next char
+        if (seq[1] == 'C') {
+          if (cursorPosition < charPosition) {
+            write(STDOUT_FILENO, "\x1b[C", 3);
+            cursorPosition++;
+          }
+          continue;
+        }
+
+        // Left - previous char
+        if (seq[1] == 'D') {
+          if (cursorPosition > 0) {
+            write(STDOUT_FILENO, "\x1b[D", 3);
+            cursorPosition--;
+          }
+          continue;
+        }
+        if (seq[1] == '1') {
+          // Extended sequence: read more bytes here
+          char extSeq[3];
+
+          if (read(STDIN_FILENO, &extSeq[0], 1) != 1)
+            continue;
+
+          if (read(STDIN_FILENO, &extSeq[1], 1) != 1)
+            continue;
+
+          if (read(STDIN_FILENO, &extSeq[2], 1) != 1)
+            continue;
+
+          // Ctrl+Up
+          if (extSeq[2] == 'A') {
+            write(STDOUT_FILENO, "u", 1);
+            continue;
+          }
+
+          // Ctrl+Down
+          if (extSeq[2] == 'B') {
+            write(STDOUT_FILENO, "d", 1);
+            continue;
+          }
+ 
+          // Scenario 1:
+          //     this          is    the       best       world
+          //                          ^
+          //     this          is    the       best       world
+          //                            ^
+          // Scenario 2:
+          //     this          is    the       best       world
+          //                               ^
+          //     this          is    the       best       world
+          //                                       ^
+          //  Note: when press Ctrl+right, ^ moves to the first space after current word or
+          //        if ^ it's on a space position, it moves to the first space character after next word
+          // Ctrl+Right - next word
+          if (extSeq[2] == 'C') {
+            // Scenario 1
+            if (chars[cursorPosition] != 32) {  // 32 is SPACE
+              moveForwardToFirstSpaceAfterCurrentWord(cursorPosition, charPosition, chars);
+            }
+            // Scenario 2
+            else {
+              moveForwardToFirstNonSpaceChar(cursorPosition, charPosition, chars);
+              moveForwardToFirstSpaceAfterCurrentWord(cursorPosition, charPosition, chars);
+            }
+            continue;
+          }
+ 
+          // Scenario 1:
+          //     this          is    the       best       world
+          //                          ^
+          //     this          is    the       best       world
+          //                         ^
+          // Scenario 2:
+          //     this          is    the       best       world
+          //                      ^
+          //     this          is    the       best       world
+          //                   ^
+          //  Note: when press Ctrl+left, ^ moves to the first charachter of current word or
+          //
+          //        if ^ it's on a space position, it moves to the first character of previous word
+          // Ctrl+Left - previous word
+          if (extSeq[2] == 'D') {
+            // Scenario 1
+            if (chars[cursorPosition] != 32) {  // 32 is SPACE
+              moveBackToFirstCharOfWord(cursorPosition, chars);
+            }
+
+            // Scenario 2
+            else {
+              moveBackToFirstNonSpaceChar(cursorPosition, chars);
+              moveBackToFirstCharOfWord(cursorPosition, chars);
+            }
+            continue;
+          }
+        }
+      }
     }
 
 		// If we hit EOF, replace it with a null character and return.
 		if (c == '\r' || c == '\n') {
-			chars[position] = '\0';
+		  cursorPosition = 0;
+
+			chars[charPosition] = '\0';
 			write(STDOUT_FILENO, "\r\n", 2);
 			return Error::eSuccess;
 		} else {
-			chars[position] = c;
+		  // includes SPACE
+		  cursorPosition++;
+
+			chars[charPosition] = c;
+		  charPosition++;
 		}
-		position++;
 		write(STDOUT_FILENO, &c, 1);
 
 		// If we have exceeded the buffer, we just clear the line
-		if (position >= charsForLine) {
+		if (charPosition >= charsForLine) {
 		  return clearLine();
 		}
   }
@@ -302,4 +436,80 @@ void ush::Repl::enableRawMode()
 void ush::Repl::disableRawMode()
 {
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &original);
+}
+
+void ush::Repl::moveBackToFirstCharOfWord(uint32_t& cursorPosition,
+  std::array<char, charsForLine>& chars)
+{
+  while(true) {
+    if (cursorPosition > 0) {
+      if (chars[cursorPosition] != 32 && chars[cursorPosition - 1] == 32) {
+        write(STDOUT_FILENO, "\x1b[D", 3);
+        cursorPosition--;
+        break;
+      }
+
+      if (chars[cursorPosition - 1] != 32) {
+        write(STDOUT_FILENO, "\x1b[D", 3);
+        cursorPosition--;
+        continue;
+      }
+      break;
+    }
+    break;
+  }
+}
+
+void ush::Repl::moveBackToFirstNonSpaceChar(uint32_t& cursorPosition,
+  std::array<char, charsForLine>& chars)
+{
+  while(true) {
+    if (cursorPosition > 0) {
+      if (chars[cursorPosition - 1] == 32) {
+        write(STDOUT_FILENO, "\x1b[D", 3);
+        cursorPosition--;
+        continue;
+      }
+      write(STDOUT_FILENO, "\x1b[D", 3);
+      cursorPosition--;
+      break;
+    }
+    break;
+  }
+}
+
+void ush::Repl::moveForwardToFirstNonSpaceChar(uint32_t& cursorPosition,
+  uint32_t& charPosition,
+  std::array<char, charsForLine>& chars)
+{
+  while(true) {
+    if (cursorPosition < charPosition) {
+      if (chars[cursorPosition + 1] == 32) {
+        write(STDOUT_FILENO, "\x1b[C", 3);
+        cursorPosition++;
+        continue;
+      }
+      break;
+    }
+    break;
+  }
+}
+
+void ush::Repl::moveForwardToFirstSpaceAfterCurrentWord(uint32_t& cursorPosition,
+  uint32_t& charPosition,
+  std::array<char, charsForLine>& chars)
+{
+  while(true) {
+    if (cursorPosition < charPosition) {
+      if (chars[cursorPosition + 1] != 32) {
+        write(STDOUT_FILENO, "\x1b[C", 3);
+        cursorPosition++;
+        continue;
+      }
+      write(STDOUT_FILENO, "\x1b[C", 3);
+      cursorPosition++;
+      break;
+    }
+    break;
+  }
 }

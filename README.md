@@ -14,8 +14,9 @@ a universall shell with these features:
 
 # TODO
 - [x] ignore white spaces and don't put them into chars and args array.
-- [ ] Ctrl+Right -> go to next word.
-- [ ] Ctrl+Left -> go to previous word.
+- [x] Ctrl+Right -> go to next word.
+- [x] Ctrl+Left -> go to previous word.
+- [ ] SPACE -> to move forwards all characters in right.
 - [ ] Ctrl+Shift+Right -> select next word.
 - [ ] Ctrl+Shift+Left -> select previous word.
 - [ ] Ctrl+Shift+c -> Copy selected text or current character and put it in clipboard.

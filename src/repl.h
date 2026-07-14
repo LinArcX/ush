@@ -68,6 +68,20 @@ namespace ush
       void enableRawMode();
       void disableRawMode();
 
+      void moveBackToFirstCharOfWord(uint32_t& cursorPosition,
+          std::array<char, charsForLine>& chars);
+
+      void moveBackToFirstNonSpaceChar(uint32_t& cursorPosition,
+          std::array<char, charsForLine>& chars);
+
+      void moveForwardToFirstNonSpaceChar(uint32_t& cursorPosition,
+          uint32_t& charPosition,
+          std::array<char, charsForLine>& chars);
+
+      void moveForwardToFirstSpaceAfterCurrentWord(uint32_t& cursorPosition,
+          uint32_t& charPosition,
+          std::array<char, charsForLine>& chars);
+ 
       static void SIGINTHandler(int signal);
   };
 }

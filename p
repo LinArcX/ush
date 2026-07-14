@@ -115,10 +115,10 @@ menu () {
 
       if [ $? -eq 1 ]; then
         # error
-        mpg123 /home/$USER/VoidConf/assets/error2.mp3 > /dev/null 2>&1 
+        mpg123 -f 3000 /home/$USER/VoidConf/assets/error2.mp3 > /dev/null 2>&1 
       else
         # success
-        mpg123 /home/$USER/VoidConf/assets/success.mp3 > /dev/null 2>&1 
+        mpg123 -f 3000 /home/$USER/VoidConf/assets/success.mp3 > /dev/null 2>&1 
       fi
 
       ;;
