@@ -3,6 +3,7 @@
 
 #include <array>
 #include <termios.h>
+#include <string_view>
 
 #include "error.h"
 
@@ -82,6 +83,7 @@ namespace ush
           uint32_t& charPosition,
           std::array<char, charsForLine>& chars);
  
+      bool saveFile(std::string_view path, std::string_view text);
       static void SIGINTHandler(int signal);
   };
 }

@@ -18,7 +18,7 @@ a universall shell with these features:
 - [x] Ctrl+Left -> go to previous word.
 - [x] SPACE -> to move forwards all characters in right.
 
-- [ ] put command history in: $HOME/.config/ush/history/commands
+- [x] put command history in: $HOME/.config/ush/history/commands
   - [ ] UP -> go to next command in history.
   - [ ] Down -> go to previous command in history
   - [ ] Ctrl+r -> search recursively in history.

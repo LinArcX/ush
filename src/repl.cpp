@@ -2,7 +2,9 @@
 
 #include <print>
 #include <stdio.h>
+#include <fstream>
 #include <unistd.h>
+#include <filesystem>
 #include <string_view>
 
 #ifdef __linux__
@@ -365,6 +367,14 @@ ush::Error ush::Repl::launchBinary(std::array<char[charsForArg], maxArgs>& args)
 		do {
 			waitpid(pid, &status, WUNTRACED);
 	    enableRawMode();
+      // TODO 2: save directories in directory history located at: $HOME/.config/ush/history/dirs
+      std::string command;
+      for (size_t i = 0; i < argc; i++) {
+        command += argv[i];
+        command += " ";
+      }
+      saveFile("commands", command);
+
 		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 	}
 #endif
@@ -533,4 +543,35 @@ void ush::Repl::moveForwardToFirstSpaceAfterCurrentWord(uint32_t& cursorPosition
     }
     break;
   }
+}
+
+bool ush::Repl::saveFile(std::string_view fileName,
+  std::string_view text)
+{
+    std::filesystem::path dir =
+      std::filesystem::path(std::getenv("HOME")) 
+      / ".config" 
+      / "ush"
+      / "history";
+
+    // Create parent directories if needed.
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+
+    if (ec) {
+        return false;
+    }
+
+    std::filesystem::path fullPath = dir / fileName;
+
+    std::ofstream file(fullPath, std::ios::binary | std::ios::app);
+
+    if (!file) {
+        return false;
+    }
+
+    file.write(text.data(), static_cast<std::streamsize>(text.size()));
+    file.put('\n');
+
+    return file.good();
 }
