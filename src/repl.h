@@ -35,10 +35,9 @@ namespace ush
        * @brief 1. handle keyboard events like Ctrl-l (clear screen), Ctrl-u (clear line)
        *        2. populate input characters and make them ready for prepareCommandAndArgs()
        *
-       * @param chars
        * @return Error::eSuccess when press Enter
        */
-      [[nodiscard]] Error handleEventsAndPopulateChars(std::array<char, charsForLine>& chars);
+      [[nodiscard]] Error handleEventsAndPopulateChars(void);
 
       /**
        * @brief parse characters, extract commands and args from it
@@ -48,42 +47,41 @@ namespace ush
        *        - any space before first charachter should be discard.
        *        - any space between first word and next word should be discard also.
        *          - but we need to increment arguments by one.
-       * @param chars an array of all input characters comes from handleEventsAndPopulateChars()
-       * @param args an array contains command and args
        * @return Error::eSuccess if parsing is ok 
        */
-      [[nodiscard]] Error parseCharsAndPopulateCommandsArgs(const std::array<char, charsForLine>& chars,
-        std::array<char[charsForArg], maxArgs>& args);
+      [[nodiscard]] Error parseCharsAndPopulateCommandsArgs(void);
 
-      [[nodiscard]] Error execute(std::array<char[charsForArg], maxArgs>& args);
-      [[nodiscard]] Error launchBinary(std::array<char[charsForArg], maxArgs>& args);
+      [[nodiscard]] Error execute(void);
+      [[nodiscard]] Error launchBinary(void);
 
-      [[nodiscard]] Error clearScreen(void);
-      [[nodiscard]] Error cd(std::array<char[charsForArg], maxArgs>& args);
-      [[nodiscard]] Error clearLine(void);
+      void clearScreen(void);
+      void clearLine(void);
+      void resetLineVarsShowPrompt(void);
+      [[nodiscard]] Error cd(void);
       [[nodiscard]] Error help(void);
       [[nodiscard]] Error exit(void);
 
     private:
-      termios original;
-      termios raw;
+      char c;
+      uint32_t m_charPosition = 0U;
+      uint32_t m_cursorPosition = 0U;
+
+      termios m_raw;
+      termios m_original;
+ 
+      std::array<char, charsForLine> m_chars {};
+      std::array<char[charsForArg], maxArgs> m_args {};
 
       void enableRawMode();
       void disableRawMode();
 
-      void moveBackToFirstCharOfWord(uint32_t& cursorPosition,
-          std::array<char, charsForLine>& chars);
+      void moveBackToFirstCharOfWord();
 
-      void moveBackToFirstNonSpaceChar(uint32_t& cursorPosition,
-          std::array<char, charsForLine>& chars);
+      void moveBackToFirstNonSpaceChar();
 
-      void moveForwardToFirstNonSpaceChar(uint32_t& cursorPosition,
-          uint32_t& charPosition,
-          std::array<char, charsForLine>& chars);
+      void moveForwardToFirstNonSpaceChar();
 
-      void moveForwardToFirstSpaceAfterCurrentWord(uint32_t& cursorPosition,
-          uint32_t& charPosition,
-          std::array<char, charsForLine>& chars);
+      void moveForwardToFirstSpaceAfterCurrentWord();
  
       bool saveFile(std::filesystem::path path,
           std::string_view file,

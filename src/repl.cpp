@@ -35,66 +35,71 @@ ush::Repl::~Repl()
 
 int ush::Repl::loop(void)
 {
-  std::array<char, charsForLine> chars {};
-  std::array<char[charsForArg], maxArgs> args {};
-
   while(true) {
     // reset arrays
-    chars = {};
-    args = {};
+    m_chars = {};
+    m_args = {};
 
-    Error e = handleEventsAndPopulateChars(chars);
+    Error e = handleEventsAndPopulateChars();
     if (e != Error::eSuccess) {
       continue;
     }
 
-    e = parseCharsAndPopulateCommandsArgs(chars, args);
+    e = parseCharsAndPopulateCommandsArgs();
     if (e != Error::eSuccess) {
       continue;
     }
  
-    e = execute(args);
+    e = execute();
     if (Error::eExit == e) {
       return 0;
     }
   }
 }
 
-ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine>& chars)
+ush::Error ush::Repl::handleEventsAndPopulateChars()
 {
-  //// detect keys in raw mode
-  //int c = 0U;
-  //while (read(STDIN_FILENO, &c, 1) == 1) {
-  //  printf("char: %c, decimal: %d hex: %02X\n",
-  //      c,
-  //      (unsigned char)c,
-  //      (unsigned char)c);
-  //}
+	resetLineVarsShowPrompt();
 
-	char c;
-	uint32_t charPosition = 0U;
-	uint32_t cursorPosition = 0U;
-  write(STDOUT_FILENO, " > ", 3);
-	
   while (read(STDIN_FILENO, &c, 1) == 1) {
+    // Ctrl-a: beginning of line
+    if (c == 1) {
+      while (m_cursorPosition > 0) {
+        write(STDOUT_FILENO, "\x1b[D", 3);
+        m_cursorPosition--;
+      }
+      continue;
+    }
+
+    // Ctrl-e: end of line
+    if (c == 5) {
+      while (m_cursorPosition < m_charPosition) {
+        write(STDOUT_FILENO, "\x1b[C", 3);
+        m_cursorPosition++;
+      }
+      continue;
+    }
+
     // Ctrl-l
     if (c == 12) {
-      return clearScreen();
+      clearScreen();
+      continue;
     }
 
     // Ctrl-u
     if (c == 21) { 
-      return clearLine();
+      clearLine();
+      continue;
     }
 
     // BakcSpace ('\b' or 127)
     if (c == 127) {
-      if (charPosition > 0) {
-        --cursorPosition;
+      if (m_charPosition > 0) {
+        --m_cursorPosition;
         write(STDOUT_FILENO, "\b \b", 3);
 
-        --charPosition;
-        chars[charPosition] = '\0';
+        --m_charPosition;
+        m_chars[m_charPosition] = '\0';
       }
       continue;
     }
@@ -121,18 +126,18 @@ ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine
 
         // Right - next char
         if (seq[1] == 'C') {
-          if (cursorPosition < charPosition) {
+          if (m_cursorPosition < m_charPosition) {
             write(STDOUT_FILENO, "\x1b[C", 3);
-            cursorPosition++;
+            m_cursorPosition++;
           }
           continue;
         }
 
         // Left - previous char
         if (seq[1] == 'D') {
-          if (cursorPosition > 0) {
+          if (m_cursorPosition > 0) {
             write(STDOUT_FILENO, "\x1b[D", 3);
-            cursorPosition--;
+            m_cursorPosition--;
           }
           continue;
         }
@@ -176,13 +181,13 @@ ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine
           // Ctrl+Right - next word
           if (extSeq[2] == 'C') {
             // Scenario 1
-            if (chars[cursorPosition] != 32) {  // 32 is SPACE
-              moveForwardToFirstSpaceAfterCurrentWord(cursorPosition, charPosition, chars);
+            if (m_chars[m_cursorPosition] != 32) {  // 32 is SPACE
+              moveForwardToFirstSpaceAfterCurrentWord();
             }
             // Scenario 2
             else {
-              moveForwardToFirstNonSpaceChar(cursorPosition, charPosition, chars);
-              moveForwardToFirstSpaceAfterCurrentWord(cursorPosition, charPosition, chars);
+              moveForwardToFirstNonSpaceChar();
+              moveForwardToFirstSpaceAfterCurrentWord();
             }
             continue;
           }
@@ -203,14 +208,14 @@ ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine
           // Ctrl+Left - previous word
           if (extSeq[2] == 'D') {
             // Scenario 1
-            if (chars[cursorPosition] != 32) {  // 32 is SPACE
-              moveBackToFirstCharOfWord(cursorPosition, chars);
+            if (m_chars[m_cursorPosition] != 32) {  // 32 is SPACE
+              moveBackToFirstCharOfWord();
             }
 
             // Scenario 2
             else {
-              moveBackToFirstNonSpaceChar(cursorPosition, chars);
-              moveBackToFirstCharOfWord(cursorPosition, chars);
+              moveBackToFirstNonSpaceChar();
+              moveBackToFirstCharOfWord();
             }
             continue;
           }
@@ -220,58 +225,59 @@ ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine
 
 		// If we hit EOF, replace it with a null character and return.
 		if (c == '\r' || c == '\n') {
-		  cursorPosition = 0;
+		  m_cursorPosition = 0;
 
-			chars[charPosition] = '\0';
+			m_chars[m_charPosition] = '\0';
 			write(STDOUT_FILENO, "\r\n", 2);
 			return Error::eSuccess;
 		} else {
 		  // this is when you start to move cursor back and foth to put space/chars
-		  if (cursorPosition < charPosition) {
-        for (std::size_t i = charPosition; i > cursorPosition; --i) {
-            chars[i] = chars[i - 1];
+		  if (m_cursorPosition < m_charPosition) {
+        for (std::size_t i = m_charPosition; i > m_cursorPosition; --i) {
+            m_chars[i] = m_chars[i - 1];
         }
-        chars[cursorPosition] = c;
-        ++cursorPosition;
-        ++charPosition;
-        chars[charPosition] = '\0';
+        m_chars[m_cursorPosition] = c;
+        ++m_cursorPosition;
+        ++m_charPosition;
+        m_chars[m_charPosition] = '\0';
         write(STDOUT_FILENO, "\r", 1);
         write(STDOUT_FILENO, "\x1b[2K", 4); // Clear line
         write(STDOUT_FILENO, " > ", 3);
-        write(STDOUT_FILENO, chars.data(), charPosition);
+        write(STDOUT_FILENO, m_chars.data(), m_charPosition);
 
         char buf[32];
         int n = std::snprintf(buf, sizeof(buf), "\r\x1b[%uC",
-                      static_cast<unsigned>(3 + cursorPosition)); // 3 = prompt length
+                      static_cast<unsigned>(3 + m_cursorPosition)); // 3 = prompt length
         write(STDOUT_FILENO, buf, n);
 		  }
 		  // this is the normal path, as you type, you move forward. it include chars and SPACE
 		  else {
-		    cursorPosition++;
+		    m_cursorPosition++;
 
-			  chars[charPosition] = c;
-		    charPosition++;
+			  m_chars[m_charPosition] = c;
+		    m_charPosition++;
 		    write(STDOUT_FILENO, &c, 1);
 		  }
 		}
 
 		// If we have exceeded the buffer, we just clear the line
-		if (charPosition >= charsForLine) {
-		  return clearLine();
+		if (m_charPosition >= charsForLine) {
+		  clearLine();
+		  return Error::eError;
 		}
   }
   // unknow error
-  return clearLine();
+  clearLine();
+  return Error::eUnknown;
 }
 
-ush::Error ush::Repl::parseCharsAndPopulateCommandsArgs(const std::array<char, charsForLine>& chars,
-  std::array<char[charsForArg], maxArgs>& args)
+ush::Error ush::Repl::parseCharsAndPopulateCommandsArgs()
 {
   bool seenChar = false;
   uint32_t currentArg = 0U;
 
   for (size_t i = 0, j = 0; i < charsForArg; i++) {
-    char currentChar = chars[i];
+    char currentChar = m_chars[i];
 
     if (currentChar == '\0') {
       return Error::eSuccess;
@@ -289,33 +295,35 @@ ush::Error ush::Repl::parseCharsAndPopulateCommandsArgs(const std::array<char, c
         || currentChar == '.'
         || currentChar == '/') {
       seenChar = true;
-      args[currentArg][j++] = currentChar;
+      m_args[currentArg][j++] = currentChar;
     }
   }
   return Error::eError;
 }
 
-ush::Error ush::Repl::execute(std::array<char[charsForArg], maxArgs>& args)
+ush::Error ush::Repl::execute()
 {
   // search in builtin commands first
-  if (std::string_view(args[0]) == std::string_view("clear")) {
-	  return clearScreen();
+  if (std::string_view(m_args[0]) == std::string_view("clear")) {
+	  clearScreen();
   }
-  if (std::string_view(args[0]) == std::string_view("cd")) {
-	  return cd(args);
+  else if (std::string_view(m_args[0]) == std::string_view("cd")) {
+	  return cd();
   }
-  if (std::string_view(args[0]) == std::string_view("help")) {
+  else if (std::string_view(m_args[0]) == std::string_view("help")) {
     return help();
   }
-  if (std::string_view(args[0]) == std::string_view("exit")) {
+  else if (std::string_view(m_args[0]) == std::string_view("exit")) {
     return exit();
   }
-  
-  // it's not a builtint. let's launch it as a separate process.
-  return launchBinary(args);
+  else {
+    // it's not a builtint. let's launch it as a separate process.
+    return launchBinary();
+  }
+  return Error::eError;
 }
 
-ush::Error ush::Repl::launchBinary(std::array<char[charsForArg], maxArgs>& args)
+ush::Error ush::Repl::launchBinary()
 {
 #if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
   STARTUPINFO si;
@@ -344,8 +352,8 @@ ush::Error ush::Repl::launchBinary(std::array<char[charsForArg], maxArgs>& args)
 #elif __linux__
   std::array<char*, maxArgs + 1> argv{};
   std::size_t argc = 0;
-  while (argc < maxArgs && args[argc][0] != '\0') {
-    argv[argc] = args[argc];
+  while (argc < maxArgs && m_args[argc][0] != '\0') {
+    argv[argc] = m_args[argc];
     ++argc;
   }
   argv[argc] = nullptr;
@@ -387,7 +395,7 @@ ush::Error ush::Repl::launchBinary(std::array<char[charsForArg], maxArgs>& args)
 	return Error::eSuccess;
 }
 
-ush::Error ush::Repl::clearScreen(void)
+void ush::Repl::clearScreen(void)
 {
 #if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
   HANDLE hStdout;
@@ -426,31 +434,40 @@ ush::Error ush::Repl::clearScreen(void)
 
   SetConsoleCursorPosition(hStdout, csbi.dwCursorPosition);
 #elif __linux__
-  //std::print("\033[3J\033[2J\033[H");
-  //std::fflush(stdout);
+  // clear screen
   constexpr char clear_seq[] = "\x1b[3J\x1b[2J\x1b[H";
   write(STDOUT_FILENO, clear_seq, sizeof(clear_seq) - 1);
+
+  resetLineVarsShowPrompt();
 #endif
-  return Error::eClearScreen;
 }
  
-ush::Error ush::Repl::clearLine(void)
-{   
+void ush::Repl::clearLine(void)
+{
+  // clear line
   write(STDOUT_FILENO, "\r", 1);
   write(STDOUT_FILENO, "\x1b[2K", 4);
-  //write(STDOUT_FILENO, " > ", 3);
-  return Error::eClearLine;
+
+  resetLineVarsShowPrompt();
 }
 
-ush::Error ush::Repl::cd(std::array<char[charsForArg], maxArgs>& args)
+void ush::Repl::resetLineVarsShowPrompt()
 {
-  if (args[1] == std::string("~") || args[1] == std::string(" ")) {
+  // reset variables and show prompt again
+  m_charPosition = 0U;
+  m_cursorPosition = 0U;
+  write(STDOUT_FILENO, " > ", 3);
+}
+
+ush::Error ush::Repl::cd()
+{
+  if (m_args[1] == std::string("~") || m_args[1] == std::string(" ")) {
     chdir(std::getenv("HOME"));
   }
   else {
-    chdir(args[1]);
+    chdir(m_args[1]);
   }
-  saveDirectoryHistory(std::string("cd ") + args[1]);
+  saveDirectoryHistory(std::string("cd ") + m_args[1]);
   return Error::eSuccess;
 }
 
@@ -467,40 +484,39 @@ ush::Error ush::Repl::exit(void)
 
 void ush::Repl::enableRawMode()
 {
-  tcgetattr(STDIN_FILENO, &original);
+  tcgetattr(STDIN_FILENO, &m_original);
 
-  raw = original;
+  m_raw = m_original;
   //raw.c_lflag &= ~(ICANON | ECHO | ECHOCTL); // IEXTEN | ISIG
-  raw.c_lflag &= ~(ICANON | ECHO | IEXTEN | ISIG);
+  m_raw.c_lflag &= ~(ICANON | ECHO | IEXTEN | ISIG);
   //raw.c_iflag &= ~(IXON | ICRNL); // BRKINT | INPCK | ISTRIP
-  raw.c_iflag &= ~(IXON | ICRNL | BRKINT | INPCK | ISTRIP);
+  m_raw.c_iflag &= ~(IXON | ICRNL | BRKINT | INPCK | ISTRIP);
   // raw.c_oflag &= ~(OPOST);
-  raw.c_cflag |= CS8;
+  m_raw.c_cflag |= CS8;
 
-  raw.c_cc[VMIN] = 1;
-  raw.c_cc[VTIME] = 0;
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+  m_raw.c_cc[VMIN] = 1;
+  m_raw.c_cc[VTIME] = 0;
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &m_raw);
 }
 
 void ush::Repl::disableRawMode()
 {
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &original);
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &m_original);
 }
 
-void ush::Repl::moveBackToFirstCharOfWord(uint32_t& cursorPosition,
-  std::array<char, charsForLine>& chars)
+void ush::Repl::moveBackToFirstCharOfWord()
 {
   while(true) {
-    if (cursorPosition > 0) {
-      if (chars[cursorPosition] != 32 && chars[cursorPosition - 1] == 32) {
+    if (m_cursorPosition > 0) {
+      if (m_chars[m_cursorPosition] != 32 && m_chars[m_cursorPosition - 1] == 32) {
         write(STDOUT_FILENO, "\x1b[D", 3);
-        cursorPosition--;
+        m_cursorPosition--;
         break;
       }
 
-      if (chars[cursorPosition - 1] != 32) {
+      if (m_chars[m_cursorPosition - 1] != 32) {
         write(STDOUT_FILENO, "\x1b[D", 3);
-        cursorPosition--;
+        m_cursorPosition--;
         continue;
       }
       break;
@@ -509,33 +525,30 @@ void ush::Repl::moveBackToFirstCharOfWord(uint32_t& cursorPosition,
   }
 }
 
-void ush::Repl::moveBackToFirstNonSpaceChar(uint32_t& cursorPosition,
-  std::array<char, charsForLine>& chars)
+void ush::Repl::moveBackToFirstNonSpaceChar()
 {
   while(true) {
-    if (cursorPosition > 0) {
-      if (chars[cursorPosition - 1] == 32) {
+    if (m_cursorPosition > 0) {
+      if (m_chars[m_cursorPosition - 1] == 32) {
         write(STDOUT_FILENO, "\x1b[D", 3);
-        cursorPosition--;
+        m_cursorPosition--;
         continue;
       }
       write(STDOUT_FILENO, "\x1b[D", 3);
-      cursorPosition--;
+      m_cursorPosition--;
       break;
     }
     break;
   }
 }
 
-void ush::Repl::moveForwardToFirstNonSpaceChar(uint32_t& cursorPosition,
-  uint32_t& charPosition,
-  std::array<char, charsForLine>& chars)
+void ush::Repl::moveForwardToFirstNonSpaceChar()
 {
   while(true) {
-    if (cursorPosition < charPosition) {
-      if (chars[cursorPosition + 1] == 32) {
+    if (m_cursorPosition < m_charPosition) {
+      if (m_chars[m_cursorPosition + 1] == 32) {
         write(STDOUT_FILENO, "\x1b[C", 3);
-        cursorPosition++;
+        m_cursorPosition++;
         continue;
       }
       break;
@@ -544,19 +557,17 @@ void ush::Repl::moveForwardToFirstNonSpaceChar(uint32_t& cursorPosition,
   }
 }
 
-void ush::Repl::moveForwardToFirstSpaceAfterCurrentWord(uint32_t& cursorPosition,
-  uint32_t& charPosition,
-  std::array<char, charsForLine>& chars)
+void ush::Repl::moveForwardToFirstSpaceAfterCurrentWord()
 {
   while(true) {
-    if (cursorPosition < charPosition) {
-      if (chars[cursorPosition + 1] != 32) {
+    if (m_cursorPosition < m_charPosition) {
+      if (m_chars[m_cursorPosition + 1] != 32) {
         write(STDOUT_FILENO, "\x1b[C", 3);
-        cursorPosition++;
+        m_cursorPosition++;
         continue;
       }
       write(STDOUT_FILENO, "\x1b[C", 3);
-      cursorPosition++;
+      m_cursorPosition++;
       break;
     }
     break;
@@ -590,18 +601,20 @@ bool ush::Repl::saveFile(std::filesystem::path path,
 
 void ush::Repl::saveCommandHistory(std::string str)
 {
-  std::filesystem::path dir = std::filesystem::path(std::getenv("HOME")) 
-                                                                    / ".config" 
-                                                                    / "ush"
-                                                                    / "history";
+  std::filesystem::path dir 
+    = std::filesystem::path(std::getenv("HOME")) 
+                                       / ".config" 
+                                       / "ush"
+                                       / "history";
   saveFile(dir, "commands", str);
 }
 
 void ush::Repl::saveDirectoryHistory(std::string str)
 {
-  std::filesystem::path dir = std::filesystem::path(std::getenv("HOME")) 
-                                                                    / ".config" 
-                                                                    / "ush"
-                                                                    / "history";
+  std::filesystem::path dir = 
+    std::filesystem::path(std::getenv("HOME")) 
+                                     / ".config" 
+                                     / "ush"
+                                     / "history";
   saveFile(dir, "dirs", str);
 }
