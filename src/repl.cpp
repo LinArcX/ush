@@ -273,7 +273,7 @@ ush::Error ush::Repl::clearLine(void)
 
 ush::Error ush::Repl::help(void)
 {
-  std::print("Welcome to unified shell(ush) ***");
+  std::print("Welcome to universal shell(ush)");
   return Error::eSuccess;
 }
 
