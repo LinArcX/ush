@@ -225,13 +225,34 @@ ush::Error ush::Repl::handleEventsAndPopulateChars(std::array<char, charsForLine
 			write(STDOUT_FILENO, "\r\n", 2);
 			return Error::eSuccess;
 		} else {
-		  // includes SPACE
-		  cursorPosition++;
+		  // this is when you start to move cursor back and foth to put space/chars
+		  if (cursorPosition < charPosition) {
+        for (std::size_t i = charPosition; i > cursorPosition; --i) {
+            chars[i] = chars[i - 1];
+        }
+        chars[cursorPosition] = c;
+        ++cursorPosition;
+        ++charPosition;
+        chars[charPosition] = '\0';
+        write(STDOUT_FILENO, "\r", 1);
+        write(STDOUT_FILENO, "\x1b[2K", 4); // Clear line
+        write(STDOUT_FILENO, " > ", 3);
+        write(STDOUT_FILENO, chars.data(), charPosition);
 
-			chars[charPosition] = c;
-		  charPosition++;
+        char buf[32];
+        int n = std::snprintf(buf, sizeof(buf), "\r\x1b[%uC",
+                      static_cast<unsigned>(3 + cursorPosition)); // 3 = prompt length
+        write(STDOUT_FILENO, buf, n);
+		  }
+		  // this is the normal path, as you type, you move forward. it include chars and SPACE
+		  else {
+		    cursorPosition++;
+
+			  chars[charPosition] = c;
+		    charPosition++;
+		    write(STDOUT_FILENO, &c, 1);
+		  }
 		}
-		write(STDOUT_FILENO, &c, 1);
 
 		// If we have exceeded the buffer, we just clear the line
 		if (charPosition >= charsForLine) {
