@@ -23,7 +23,7 @@ a universall shell with these features:
   - [ ] Down -> go to previous command in history
   - [ ] Ctrl+r -> search recursively in history.
 
-- [ ] put directory history in: $HOME/.config/ush/history/dirs
+- [x] put directory history in: $HOME/.config/ush/history/dirs
   - [ ] Ctrl+j -> Go to next directory in history
   - [ ] Ctrl+k -> Go to previous directory in history
 

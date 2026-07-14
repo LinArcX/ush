@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <fstream>
 #include <unistd.h>
-#include <filesystem>
 #include <string_view>
 
 #ifdef __linux__
@@ -284,7 +283,11 @@ ush::Error ush::Repl::parseCharsAndPopulateCommandsArgs(const std::array<char, c
         seenChar = false;
       }
     }
-    else if (isalnum(currentChar) || currentChar == '-') {
+    else if (isalnum(currentChar) 
+        || currentChar == '-' 
+        || currentChar == '~' 
+        || currentChar == '.'
+        || currentChar == '/') {
       seenChar = true;
       args[currentArg][j++] = currentChar;
     }
@@ -295,18 +298,21 @@ ush::Error ush::Repl::parseCharsAndPopulateCommandsArgs(const std::array<char, c
 ush::Error ush::Repl::execute(std::array<char[charsForArg], maxArgs>& args)
 {
   // search in builtin commands first
-	if (std::string_view(args[0]) == std::string_view("clear")) {
+  if (std::string_view(args[0]) == std::string_view("clear")) {
 	  return clearScreen();
-	}
-	if (std::string_view(args[0]) == std::string_view("help")) {
-	  return help();
-	}
-	if (std::string_view(args[0]) == std::string_view("exit")) {
-	  return exit();
-	}
-	
+  }
+  if (std::string_view(args[0]) == std::string_view("cd")) {
+	  return cd(args);
+  }
+  if (std::string_view(args[0]) == std::string_view("help")) {
+    return help();
+  }
+  if (std::string_view(args[0]) == std::string_view("exit")) {
+    return exit();
+  }
+  
   // it's not a builtint. let's launch it as a separate process.
-	return launchBinary(args);
+  return launchBinary(args);
 }
 
 ush::Error ush::Repl::launchBinary(std::array<char[charsForArg], maxArgs>& args)
@@ -336,47 +342,47 @@ ush::Error ush::Repl::launchBinary(std::array<char[charsForArg], maxArgs>& args)
 	CloseHandle( pi.hProcess );
 	CloseHandle( pi.hThread );
 #elif __linux__
-	int status;
-	pid_t pid;
-
   std::array<char*, maxArgs + 1> argv{};
-
   std::size_t argc = 0;
-
   while (argc < maxArgs && args[argc][0] != '\0') {
     argv[argc] = args[argc];
     ++argc;
   }
   argv[argc] = nullptr;
 
-  disableRawMode();
-	pid = fork();
-	if (pid == 0) {
-		// TODO: enable Ctrl-C to exit from child process
-		// Child process
-		if(execvp(argv[0], argv.data()) == -1) {
-      std::print("\"{0}\" not found\n", argv[0]);
-      // exit from failed child process
-      _exit(127);
-		}
-	} else if (pid < 0) {
-    std::print("ush::launch() --> pid: {0}, error in forking\n", pid);
-    return Error::eError;
-	} else {
-		// Parent process
-		do {
-			waitpid(pid, &status, WUNTRACED);
-	    enableRawMode();
-      // TODO 2: save directories in directory history located at: $HOME/.config/ush/history/dirs
-      std::string command;
-      for (size_t i = 0; i < argc; i++) {
-        command += argv[i];
-        command += " ";
-      }
-      saveFile("commands", command);
-
-		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
-	}
+  if (argv[0] == std::string("cd")) {
+    chdir(argv[1]);
+    saveDirectoryHistory(argv[1]);
+  }
+  else {
+	  int status;
+	  pid_t pid;
+    disableRawMode();
+	  pid = fork();
+	  if (pid == 0) {
+	  	// Child process
+	  	if(execvp(argv[0], argv.data()) == -1) {
+        std::print("\"{0}\" not found\n", argv[0]);
+        // exit from failed child process
+        _exit(127);
+	  	}
+	  } else if (pid < 0) {
+      std::print("ush::launch() --> pid: {0}, error in forking\n", pid);
+      return Error::eError;
+	  } else {
+	  	// Parent process
+	  	do {
+	  		waitpid(pid, &status, WUNTRACED);
+	      enableRawMode();
+        std::string command;
+        for (size_t i = 0; i < argc; i++) {
+          command += argv[i];
+          command += " ";
+        }
+        saveCommandHistory(command);
+	  	} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+	  }
+  }
 #endif
 	return Error::eSuccess;
 }
@@ -434,6 +440,18 @@ ush::Error ush::Repl::clearLine(void)
   write(STDOUT_FILENO, "\x1b[2K", 4);
   //write(STDOUT_FILENO, " > ", 3);
   return Error::eClearLine;
+}
+
+ush::Error ush::Repl::cd(std::array<char[charsForArg], maxArgs>& args)
+{
+  if (args[1] == std::string("~") || args[1] == std::string(" ")) {
+    chdir(std::getenv("HOME"));
+  }
+  else {
+    chdir(args[1]);
+  }
+  saveDirectoryHistory(std::string("cd ") + args[1]);
+  return Error::eSuccess;
 }
 
 ush::Error ush::Repl::help(void)
@@ -545,33 +563,45 @@ void ush::Repl::moveForwardToFirstSpaceAfterCurrentWord(uint32_t& cursorPosition
   }
 }
 
-bool ush::Repl::saveFile(std::string_view fileName,
+bool ush::Repl::saveFile(std::filesystem::path path,
+  std::string_view file,
   std::string_view text)
 {
-    std::filesystem::path dir =
-      std::filesystem::path(std::getenv("HOME")) 
-      / ".config" 
-      / "ush"
-      / "history";
-
     // Create parent directories if needed.
     std::error_code ec;
-    std::filesystem::create_directories(dir, ec);
-
+    std::filesystem::create_directories(path, ec);
     if (ec) {
         return false;
     }
 
-    std::filesystem::path fullPath = dir / fileName;
+    std::filesystem::path fullPath = path / file;
 
-    std::ofstream file(fullPath, std::ios::binary | std::ios::app);
+    std::ofstream osfile(fullPath, std::ios::binary | std::ios::app);
 
-    if (!file) {
+    if (!osfile) {
         return false;
     }
 
-    file.write(text.data(), static_cast<std::streamsize>(text.size()));
-    file.put('\n');
+    osfile.write(text.data(), static_cast<std::streamsize>(text.size()));
+    osfile.put('\n');
 
-    return file.good();
+    return osfile.good();
+}
+
+void ush::Repl::saveCommandHistory(std::string str)
+{
+  std::filesystem::path dir = std::filesystem::path(std::getenv("HOME")) 
+                                                                    / ".config" 
+                                                                    / "ush"
+                                                                    / "history";
+  saveFile(dir, "commands", str);
+}
+
+void ush::Repl::saveDirectoryHistory(std::string str)
+{
+  std::filesystem::path dir = std::filesystem::path(std::getenv("HOME")) 
+                                                                    / ".config" 
+                                                                    / "ush"
+                                                                    / "history";
+  saveFile(dir, "dirs", str);
 }

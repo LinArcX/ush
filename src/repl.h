@@ -3,6 +3,7 @@
 
 #include <array>
 #include <termios.h>
+#include <filesystem>
 #include <string_view>
 
 #include "error.h"
@@ -58,6 +59,7 @@ namespace ush
       [[nodiscard]] Error launchBinary(std::array<char[charsForArg], maxArgs>& args);
 
       [[nodiscard]] Error clearScreen(void);
+      [[nodiscard]] Error cd(std::array<char[charsForArg], maxArgs>& args);
       [[nodiscard]] Error clearLine(void);
       [[nodiscard]] Error help(void);
       [[nodiscard]] Error exit(void);
@@ -83,7 +85,14 @@ namespace ush
           uint32_t& charPosition,
           std::array<char, charsForLine>& chars);
  
-      bool saveFile(std::string_view path, std::string_view text);
+      bool saveFile(std::filesystem::path path,
+          std::string_view file,
+          std::string_view text);
+
+      void saveCommandHistory(std::string str);
+
+      void saveDirectoryHistory(std::string str);
+
       static void SIGINTHandler(int signal);
   };
 }
