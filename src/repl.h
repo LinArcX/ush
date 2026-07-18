@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <string_view>
 #include <vector>
+#include <sys/ioctl.h>
 
 #include "error.h"
 
@@ -67,6 +68,7 @@ namespace ush
       uint32_t m_charPosition = 0U;
       uint32_t m_cursorPosition = 0U;
 
+      winsize m_ws{};
       termios m_raw;
       termios m_original;
  
@@ -90,6 +92,8 @@ namespace ush
       void moveForwardToFirstNonSpaceChar();
 
       void moveForwardToFirstSpaceAfterCurrentWord();
+
+      void showElns(std::string path);
  
       bool lineIsEmpty();
       bool saveFile(std::filesystem::path path,

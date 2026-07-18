@@ -5,6 +5,7 @@
 #include <fstream>
 #include <unistd.h>
 #include <string_view>
+#include <algorithm>
 
 #ifdef __linux__
 #include <csignal>
@@ -21,6 +22,9 @@ void ush::Repl::SIGINTHandler(int signal)
 
 ush::Repl::Repl()
 {
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &m_ws) == -1) {
+    perror("ioctl");
+  }
   enableRawMode();
 
   // SIGINIT is disabled in ush main process, and just child process are allowed to have SIGINIT.
@@ -38,6 +42,9 @@ ush::Repl::~Repl()
 
 int ush::Repl::loop(void)
 {
+  clearScreen();
+  showElns(std::filesystem::current_path());
+
   while(true) {
     // reset arrays
     m_chars = {};
@@ -85,6 +92,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
     // Ctrl-l
     if (c == 12) {
       clearScreen();
+      showElns(std::filesystem::current_path());
+      resetLineVarsShowPrompt();
       continue;
     }
 
@@ -544,7 +553,8 @@ void ush::Repl::clearScreen(void)
   constexpr char clear_seq[] = "\x1b[3J\x1b[2J\x1b[H";
   write(STDOUT_FILENO, clear_seq, sizeof(clear_seq) - 1);
 
-  resetLineVarsShowPrompt();
+  m_charPosition = 0U;
+  m_cursorPosition = 0U;
 #endif
 }
  
@@ -576,6 +586,11 @@ ush::Error ush::Repl::cd()
     chdir(m_args[1]);
   }
   saveDirectoryHistory(std::string("cd ") + m_args[1]);
+
+  clearScreen();
+  showElns(std::filesystem::current_path());
+  //resetLineVarsShowPrompt();
+
   return Error::eSuccess;
 }
 
@@ -775,4 +790,52 @@ bool ush::Repl::lineIsEmpty()
     return true;
   }
   return false;
+}
+
+void ush::Repl::showElns(std::string path)
+{
+  char buf[16];
+  uint32_t elnNumber = 1U;
+  std::vector<std::filesystem::directory_entry> entries;
+
+  for (const auto& entry : std::filesystem::directory_iterator(path)) {
+    entries.push_back(entry);
+  }
+
+  std::ranges::sort(entries, {}, [](const auto& e) {
+    return e.path().filename().string();
+  });
+
+  for (const auto& entry : entries) {
+    auto [ptr, ec] = std::to_chars(buf, buf + sizeof(buf), elnNumber);
+    if (ec == std::errc{}) {
+      std::string name = entry.path().filename().string();
+
+      write(STDOUT_FILENO, "\033[38;2;109;229;210m", 20);
+      write(STDOUT_FILENO, buf, ptr - buf);
+      write(STDOUT_FILENO, "\033[0m", 4);
+      write(STDOUT_FILENO, " ", 1);
+
+      if (entry.is_directory()) {
+        write(STDOUT_FILENO, "\033[38;2;102;153;204m", 20);
+        write(STDOUT_FILENO, name.data(), name.size());
+        write(STDOUT_FILENO, "\033[0m", 4);
+      } else if (entry.is_regular_file()) {
+        write(STDOUT_FILENO, "\033[38;2;169;218;169m", 20);
+        write(STDOUT_FILENO, name.data(), name.size());
+        write(STDOUT_FILENO, "\033[0m", 4);
+      } else {
+      }
+    }
+   
+    write(STDOUT_FILENO, "\r\n", 2);
+    elnNumber++;
+  }
+
+  for (size_t i = 0; i < m_ws.ws_col; i++) {
+    write(STDOUT_FILENO, "\033[38;2;179;179;179m", 20);
+    write(STDOUT_FILENO, "-", 1);
+    write(STDOUT_FILENO, "\033[0m", 4);
+  }
+  write(STDOUT_FILENO, "\r\n", 2);
 }
