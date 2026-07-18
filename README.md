@@ -27,8 +27,8 @@ a universall shell with these features:
   - [ ] Ctrl+r -> search recursively in history.
 
 - [x] put directory history in: $HOME/.config/ush/history/dirs
-  - [ ] Alt+j -> Go to next directory in history
-  - [ ] Alt+k -> Go to previous directory in history
+  - [x] Alt+j -> Go to next directory in history
+  - [x] Alt+k -> Go to previous directory in history
 
 - [ ] implement [ELN](https://github.com/leo-arch/clifm/wiki/Common-Operations#elns) inspired by clifm.
 - [ ] press tab offer auto-completion menu.

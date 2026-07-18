@@ -102,22 +102,72 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
 
         --m_charPosition;
         m_chars[m_charPosition] = '\0';
+
+        if (lineIsEmpty()) {
+			    m_chars[m_charPosition] = '\0';
+          m_inDirHistoryTravelMode = true;
+          m_inCommandHistoryTravelMode = true;
+		      continue;
+		    }
       }
       continue;
     }
 
     if (c == 27 ) { // ESC or \x1b
-      char seq[2];
+      char seq[1];
 
       if (read(STDIN_FILENO, &seq[0], 1) != 1)
         continue;
 
-      if (read(STDIN_FILENO, &seq[1], 1) != 1)
+      // Alt+j - next dir history
+      if (seq[0] == 'j') {
+        if (m_inDirHistoryTravelMode == true) {
+          if (m_inDirHistoryLastIndexVisited < m_dirsHistory.size()) {
+            std::string item = m_dirsHistory[++m_inDirHistoryLastIndexVisited];
+            size_t itemSize = item.size();
+            if (itemSize > 0) {
+              clearLine();
+            }
+            for (size_t i = 0; i < itemSize; i++) {
+              write(STDOUT_FILENO, &item[i], 1);
+              m_chars[m_cursorPosition] = item[i];
+              m_cursorPosition++;
+              m_charPosition++;
+            }
+          }
+        }
         continue;
+      }
+
+      // Alt+k - previous dir history
+      if (seq[0] == 'k') {
+        if (m_inDirHistoryTravelMode == true) {
+          if (m_inDirHistoryLastIndexVisited > 0) {
+            std::string item = m_dirsHistory[--m_inDirHistoryLastIndexVisited];
+            size_t itemSize = item.size();
+            if (itemSize > 0) {
+              clearLine();
+            }
+            for (size_t i = 0; i < itemSize; i++) {
+              write(STDOUT_FILENO, &item[i], 1);
+              m_chars[m_cursorPosition] = item[i];
+              m_cursorPosition++;
+              m_charPosition++;
+            }
+          }
+        }
+        continue;
+      }
 
       if (seq[0] == '[') {
+        // Extended sequence: read more bytes here
+        char extSeq1[1];
+
+        if (read(STDIN_FILENO, &extSeq1[0], 1) != 1)
+          continue;
+ 
         // Up - previous history
-        if (seq[1] == 'A') {
+        if (extSeq1[0] == 'A') {
           if (m_inCommandHistoryTravelMode == true) {
             if (m_inCommandHistoryLastIndexVisited > 0) {
               std::string item = m_commandsHistory[--m_inCommandHistoryLastIndexVisited];
@@ -137,7 +187,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
         }
 
         // Down - next history
-        if (seq[1] == 'B') {
+        if (extSeq1[0] == 'B') {
           if (m_inCommandHistoryTravelMode == true) {
             if (m_inCommandHistoryLastIndexVisited < m_commandsHistory.size()) {
               std::string item = m_commandsHistory[++m_inCommandHistoryLastIndexVisited];
@@ -163,7 +213,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
         }
 
         // Right - next char
-        if (seq[1] == 'C') {
+        if (extSeq1[0] == 'C') {
           if (m_cursorPosition < m_charPosition) {
             write(STDOUT_FILENO, "\x1b[C", 3);
             m_cursorPosition++;
@@ -174,7 +224,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
         }
 
         // Left - previous char
-        if (seq[1] == 'D') {
+        if (extSeq1[0] == 'D') {
           if (m_cursorPosition > 0) {
             write(STDOUT_FILENO, "\x1b[D", 3);
             m_cursorPosition--;
@@ -183,21 +233,21 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
           }
           continue;
         }
-        if (seq[1] == '1') {
+        if (extSeq1[0] == '1') {
           // Extended sequence: read more bytes here
-          char extSeq[3];
+          char extSeq2[3];
 
-          if (read(STDIN_FILENO, &extSeq[0], 1) != 1)
+          if (read(STDIN_FILENO, &extSeq2[0], 1) != 1)
             continue;
 
-          if (read(STDIN_FILENO, &extSeq[1], 1) != 1)
+          if (read(STDIN_FILENO, &extSeq2[1], 1) != 1)
             continue;
 
-          if (read(STDIN_FILENO, &extSeq[2], 1) != 1)
+          if (read(STDIN_FILENO, &extSeq2[2], 1) != 1)
             continue;
 
           // Ctrl+Up
-          if (extSeq[2] == 'A') {
+          if (extSeq2[2] == 'A') {
             if (m_inDirHistoryTravelMode == true) {
               write(STDOUT_FILENO, "u", 1);
             }
@@ -206,7 +256,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
           }
 
           // Ctrl+Down
-          if (extSeq[2] == 'B') {
+          if (extSeq2[2] == 'B') {
             write(STDOUT_FILENO, "d", 1);
             continue;
           }
@@ -224,7 +274,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
           //  Note: when press Ctrl+right, ^ moves to the first space after current word or
           //        if ^ it's on a space position, it moves to the first space character after next word
           // Ctrl+Right - next word
-          if (extSeq[2] == 'C') {
+          if (extSeq2[2] == 'C') {
             // Scenario 1
             if (m_chars[m_cursorPosition] != 32) {  // 32 is SPACE
               moveForwardToFirstSpaceAfterCurrentWord();
@@ -251,7 +301,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
           //
           //        if ^ it's on a space position, it moves to the first character of previous word
           // Ctrl+Left - previous word
-          if (extSeq[2] == 'D') {
+          if (extSeq2[2] == 'D') {
             // Scenario 1
             if (m_chars[m_cursorPosition] != 32) {  // 32 is SPACE
               moveBackToFirstCharOfWord();
@@ -671,7 +721,7 @@ void ush::Repl::readDirectoryHistory()
                                        / "dirs";
   readFile(path, m_dirsHistory);
   std::erase(m_dirsHistory, "");
-  m_inDirHistoryLastIndexVisited = m_dirsHistory.size();
+  m_inDirHistoryLastIndexVisited = m_dirsHistory.size() - 1;
 }
 
 bool ush::Repl::saveFile(std::filesystem::path path,
