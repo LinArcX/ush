@@ -30,7 +30,7 @@ a universall shell with these features:
   - [x] Alt+j -> Go to next directory in history
   - [x] Alt+k -> Go to previous directory in history
 
-- [ ] implement [ELN](https://github.com/leo-arch/clifm/wiki/Common-Operations#elns) inspired by clifm.
+- [x] implement [ELN](https://github.com/leo-arch/clifm/wiki/Common-Operations#elns) inspired by clifm.
   - [ ] for directories shows number of files/dirs inside it as /NUMBER at end of ELN.
   - [ ] if the group is root, show file as green, show dir as green with background.
   - [ ] if the file is readonly, show it as grey.
@@ -40,6 +40,7 @@ a universall shell with these features:
   - [ ] if the file is .epub, .pdf show it as orange (with book icon)
   - [ ] if the file is .mp3, .ogg, show it as lime (with music icon)
   - [ ] if the file is .jpg, .png, show it as purple (with picture icon)
+
 - [ ] press tab offer auto-completion menu.
 - [ ] just typipng any character, will show as a hint the aviable command or avaiable history.
 

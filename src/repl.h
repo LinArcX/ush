@@ -20,6 +20,11 @@ namespace ush
   class Repl
   {
     public:
+      enum class EElnAttr : uint32_t {
+        eBackground,
+        eForeground
+      };
+
       Repl();
       ~Repl();
 
@@ -64,6 +69,34 @@ namespace ush
       [[nodiscard]] Error exit(void);
 
     private:
+      // nerd-fonts
+      const char8_t* m_text = u8"\uf15c";
+      const char8_t* m_json = u8"\ueb0f";
+      const char8_t* m_html = u8"\ue60e";
+      const char8_t* m_css = u8"\ue6b8";
+      const char8_t* m_js = u8"\ue781";
+      const char8_t* m_csv = u8"\ueefc";
+      const char8_t* m_xml = u8"\ue8ea";
+      const char8_t* m_cpp = u8"\ue61d";
+      const char8_t* m_c = u8"\ue61e";
+      const char8_t* m_python = u8"\ue73c";
+      const char8_t* m_ruby = u8"\ue739";
+      const char8_t* m_bash = u8"\ue760";
+      const char8_t* m_font = u8"\uf031";
+      const char8_t* m_zip = u8"\ue6aa";
+      const char8_t* m_rust = u8"\ue7a8";
+      const char8_t* m_nim = u8"\ue841";
+      const char8_t* m_yaml = u8"\ue8eb";
+      const char8_t* m_toml = u8"\ue6b2";
+      const char8_t* m_markdown = u8"\uf48a";
+      const char8_t* m_audio = u8"\uec1b";
+      const char8_t* m_video = u8"\uf1c8";
+      const char8_t* m_image = u8"\uf03e";
+      const char8_t* m_pdf = u8"\uf1c1";
+      const char8_t* m_application = u8"\uf0be";
+      const char8_t* m_file = u8"\uf15b";
+      const char8_t* m_folder = u8"\uf07b";
+        
       char c;
       uint32_t m_charPosition = 0U;
       uint32_t m_cursorPosition = 0U;
@@ -107,7 +140,40 @@ namespace ush
       void readCommandHistory();
       void readDirectoryHistory();
 
+      void drawElnNode(const char* name,
+          size_t size,
+          const char8_t* iconName,
+          EElnAttr attr,
+          uint32_t r, uint32_t g, uint32_t b);
+
       static void SIGINTHandler(int signal);
+
+      /**
+       * @brief detect the type of a file
+       *
+       * @param fileName IN
+       * @param type OUT argument which contains one of these:
+       *      0 -> unknown
+       *      1 -> image,
+       *      2 -> video
+       *      3 -> audio
+       *      4 -> text
+       *      5 -> application
+       * @return true if it can detect the file type, otherwise false.
+       */
+      //bool getFileType(const char * const fileName,
+      //                int8_t* type);
+      /**
+       * @brief detect the extension of a file
+       *
+       * @param fileName IN
+       * @param extName OUT
+       * @param extNameSize IN
+       * @return true if it can detect the file extension, otherwise false.
+       */
+      //bool getExtensionOfFile(const char * const fileName,
+      //                        char extName[],
+      //                        uint32_t extNameSize);
   };
 }
 #endif // USH_REPL_H

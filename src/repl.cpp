@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string_view>
 #include <algorithm>
+#include <magic.h>
 
 #ifdef __linux__
 #include <csignal>
@@ -817,14 +818,175 @@ void ush::Repl::showElns(std::string path)
       write(STDOUT_FILENO, " ", 1);
 
       if (entry.is_directory()) {
-        write(STDOUT_FILENO, "\033[38;2;102;153;204m", 20);
-        write(STDOUT_FILENO, name.data(), name.size());
-        write(STDOUT_FILENO, "\033[0m", 4);
+        drawElnNode(name.data(), name.size(), m_folder, EElnAttr::eForeground, 102, 153, 204);
       } else if (entry.is_regular_file()) {
-        write(STDOUT_FILENO, "\033[38;2;169;218;169m", 20);
-        write(STDOUT_FILENO, name.data(), name.size());
-        write(STDOUT_FILENO, "\033[0m", 4);
-      } else {
+        magic_t m = magic_open(MAGIC_MIME_TYPE);
+        magic_load(m, nullptr);
+        const char* type = magic_file(m, name.data());
+
+        if(std::string(type).compare("text/plain") == 0) {
+            drawElnNode(name.data(), name.size(), m_text, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("text/html") == 0) {
+            drawElnNode(name.data(), name.size(), m_html, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("text/css") == 0) {
+            drawElnNode(name.data(), name.size(), m_css, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("text/javascript") == 0) {
+            drawElnNode(name.data(), name.size(), m_js, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("text/markdown") == 0) {
+            drawElnNode(name.data(), name.size(), m_markdown, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("text/csv") == 0) {
+            drawElnNode(name.data(), name.size(), m_csv, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("text/xml") == 0) {
+            drawElnNode(name.data(), name.size(), m_xml, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("text/x-c++") == 0) {
+            drawElnNode(name.data(), name.size(), m_cpp, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("text/x-python") == 0) {
+            drawElnNode(name.data(), name.size(), m_python, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("text/x-shellscript") == 0) {
+            drawElnNode(name.data(), name.size(), m_bash, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("image/jpeg") == 0) {
+            drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("image/png") == 0) {
+            drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("image/gif") == 0) {
+            drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("image/webp") == 0) {
+            drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("image/svg+xml") == 0) {
+            drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("image/bmp") == 0) {
+            drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("image/tiff") == 0) {
+            drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("image/x-icon") == 0) {
+            drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("audio/mpeg") == 0) {
+            drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("audio/flac") == 0) {
+            drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("audio/wav") == 0) {
+            drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("audio/ogg") == 0) {
+            drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("audio/aac") == 0) {
+            drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("audio/mp4") == 0) {
+            drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("audio/webm") == 0) {
+            drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+        }
+        if(std::string(type).compare("audio/midi") == 0) {
+            drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+        }
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+        //// image
+        //else if(std::string(type).contains("image")) {
+        //  drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+        //  //// color-start
+        //  //write(STDOUT_FILENO, "\033[38;2;169;218;169m", 20);
+        //  //// icon
+        //  //write(STDOUT_FILENO, reinterpret_cast<const char*>(m_image), std::char_traits<char8_t>::length(m_image));
+        //  //write(STDOUT_FILENO, " ", 1);
+        //  //// text
+        //  //write(STDOUT_FILENO, name.data(), name.size());
+        //  //// color-end
+        //  //write(STDOUT_FILENO, "\033[0m", 4);
+        //}
+        //// video
+        //else if(std::string(type).contains("video")) {
+        //  drawElnNode(name.data(), name.size(), m_video, EElnAttr::eForeground, 169, 218, 169);
+        //  //// color-start
+        //  //write(STDOUT_FILENO, "\033[38;2;169;218;169m", 20);
+        //  //// icon
+        //  //write(STDOUT_FILENO, reinterpret_cast<const char*>(m_video), std::char_traits<char8_t>::length(m_video));
+        //  //write(STDOUT_FILENO, " ", 1);
+        //  //// text
+        //  //write(STDOUT_FILENO, name.data(), name.size());
+        //  //// color-end
+        //  //write(STDOUT_FILENO, "\033[0m", 4);
+        //  ////write(STDOUT_FILENO, "\033[38;2;169;218;169m", 20);
+        //  ////write(STDOUT_FILENO, name.data(), name.size());
+        //  ////write(STDOUT_FILENO, "\033[0m", 4);
+        //}
+        //// audio
+        //else if(std::string(type).contains("audio")) {
+        //  drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+ 
+        //  //// color-start
+        //  //write(STDOUT_FILENO, "\033[38;2;169;218;169m", 20);
+        //  //// icon
+        //  //write(STDOUT_FILENO, reinterpret_cast<const char*>(m_audio), std::char_traits<char8_t>::length(m_audio));
+        //  //write(STDOUT_FILENO, " ", 1);
+        //  //// text
+        //  //write(STDOUT_FILENO, name.data(), name.size());
+        //  //// color-end
+        //  //write(STDOUT_FILENO, "\033[0m", 4);
+        //}
+        //// text
+        //else if(std::string(type).contains("text")) {
+        //  // color-start
+        //  write(STDOUT_FILENO, "\033[38;2;169;218;169m", 20);
+        //  // icon
+        //  write(STDOUT_FILENO, reinterpret_cast<const char*>(m_text), std::char_traits<char8_t>::length(m_text));
+        //  write(STDOUT_FILENO, " ", 1);
+        //  // text
+        //  write(STDOUT_FILENO, name.data(), name.size());
+        //  // color-end
+        //  write(STDOUT_FILENO, "\033[0m", 4);
+        //}
+        //// application (.desktop)
+        //else if(std::string(type).contains("application")) {
+        //  // color-start
+        //  write(STDOUT_FILENO, "\033[38;2;169;218;169m", 20);
+        //  // icon
+        //  write(STDOUT_FILENO, reinterpret_cast<const char*>(m_application), std::char_traits<char8_t>::length(m_application));
+        //  write(STDOUT_FILENO, " ", 1);
+        //  // text
+        //  write(STDOUT_FILENO, name.data(), name.size());
+        //  // color-end
+        //  write(STDOUT_FILENO, "\033[0m", 4);
+        //}
+      } 
+      else {
       }
     }
    
@@ -838,4 +1000,34 @@ void ush::Repl::showElns(std::string path)
     write(STDOUT_FILENO, "\033[0m", 4);
   }
   write(STDOUT_FILENO, "\r\n", 2);
+}
+
+void ush::Repl::drawElnNode(const char* name, 
+    size_t size,
+    const char8_t* iconName,
+    EElnAttr attr,
+    uint32_t r, uint32_t g, uint32_t b)
+{
+  std::string str;
+  if (attr == EElnAttr::eForeground) {
+    // color-start
+    str = std::format("\033[38;2;{};{};{}m", r, g, b);
+    //write(STDOUT_FILENO, "\033[38;2;169;218;169m", 20);
+  }
+  else {
+    // color-start
+    str = std::format("\033[48;2;{};{};{}m", r, g, b);
+    //write(STDOUT_FILENO, "\033[48;2;169;218;169m", 20);
+  }
+  write(STDOUT_FILENO, str.data(), str.size());
+
+  // icon
+  write(STDOUT_FILENO, reinterpret_cast<const char*>(iconName),
+      std::char_traits<char8_t>::length(iconName));
+  // extra space after icon
+  write(STDOUT_FILENO, " ", 1);
+  // text
+  write(STDOUT_FILENO, name, size);
+  // color-end
+  write(STDOUT_FILENO, "\033[0m", 4);
 }

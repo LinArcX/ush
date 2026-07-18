@@ -110,7 +110,7 @@ menu () {
           -Wformat=2 -Wall -Werror -Wextra -Wunused-function -Wpedantic -Wno-unused-parameter \
           -Wshadow -Wwrite-strings -Wunused-result  \
           -Wredundant-decls -Wmissing-include-dirs -Wlogical-op \
-          -ldl -pthread -lm \
+          -ldl -pthread -lmagic -lm \
           src/*.cpp -o ./build/debug/ush 
 
       if [ $? -eq 1 ]; then
