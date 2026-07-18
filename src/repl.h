@@ -91,6 +91,7 @@ namespace ush
 
       void moveForwardToFirstSpaceAfterCurrentWord();
  
+      bool lineIsEmpty();
       bool saveFile(std::filesystem::path path,
           std::string_view file,
           std::string_view text);

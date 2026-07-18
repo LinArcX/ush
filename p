@@ -38,7 +38,7 @@
 menu () {
   commands=(
     # debug
-    "build(debug)" "run(debug)" "gf2" "rr record" "gf2 --rr-replay" "clean(debug)"
+    "build(debug)" "run(debug)" "gf2" "gf2 attach" "rr record" "gf2 --rr-replay" "clean(debug)"
 
     # release
     "build(release)" "run(release)" "clean(release)"
@@ -129,6 +129,9 @@ menu () {
       cd ../..
       ;;
     "gf2")
+      gf2 -nx -ex "source breakpoints.gdb" build/debug/ush
+      ;;
+    "gf2 attach")
       # if you get this error: 
       # Attaching to process 18446 ❌️ ptrace: Operation not permitted.
       # just run:

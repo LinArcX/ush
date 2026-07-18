@@ -18,17 +18,17 @@ a universall shell with these features:
 - [x] Ctrl+Right -> go to next word.
 - [x] Ctrl+Left -> go to previous word.
 - [x] SPACE -> to move forwards all characters in right.
-- [ ] Ctrl+k -> move characters right of cursor
-- [ ] Ctrl+u -> move characters left of cursor
+- [ ] Ctrl+k -> clear characters from right of the cursor
+- [ ] Ctrl+u -> clear characters from left of the cursor
 
 - [x] put command history in: $HOME/.config/ush/history/commands
-  - [ ] UP -> go to next command in history.
-  - [ ] Down -> go to previous command in history
+  - [x] UP -> go to next command in history.
+  - [x] Down -> go to previous command in history
   - [ ] Ctrl+r -> search recursively in history.
 
 - [x] put directory history in: $HOME/.config/ush/history/dirs
-  - [ ] Ctrl+j -> Go to next directory in history
-  - [ ] Ctrl+k -> Go to previous directory in history
+  - [ ] Alt+j -> Go to next directory in history
+  - [ ] Alt+k -> Go to previous directory in history
 
 - [ ] implement [ELN](https://github.com/leo-arch/clifm/wiki/Common-Operations#elns) inspired by clifm.
 - [ ] press tab offer auto-completion menu.
