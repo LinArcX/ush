@@ -86,6 +86,9 @@ namespace ush
       const char8_t* m_zip = u8"\ue6aa";
       const char8_t* m_rust = u8"\ue7a8";
       const char8_t* m_nim = u8"\ue841";
+      const char8_t* m_go = u8"\ue627";
+      const char8_t* m_zig = u8"\ue8ef";
+      const char8_t* m_java = u8"\ue738";
       const char8_t* m_yaml = u8"\ue8eb";
       const char8_t* m_toml = u8"\ue6b2";
       const char8_t* m_markdown = u8"\uf48a";
@@ -93,11 +96,20 @@ namespace ush
       const char8_t* m_video = u8"\uf1c8";
       const char8_t* m_image = u8"\uf03e";
       const char8_t* m_pdf = u8"\uf1c1";
+      const char8_t* m_word = u8"\ue6a5";
+      const char8_t* m_excel = u8"\uf1c3";
+      const char8_t* m_powerpoint = u8"\uf1c4";
       const char8_t* m_application = u8"\uf0be";
+      const char8_t* m_binary = u8"\ueae8";
+      const char8_t* m_library = u8"\ueb9c";
       const char8_t* m_file = u8"\uf15b";
       const char8_t* m_folder = u8"\uf07b";
+      const char8_t* m_debug = u8"\uead8";
+      
+      
         
       char c;
+      uint32_t m_elnNumber = 1U;
       uint32_t m_charPosition = 0U;
       uint32_t m_cursorPosition = 0U;
 
