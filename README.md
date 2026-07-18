@@ -18,6 +18,8 @@ a universall shell with these features:
 - [x] Ctrl+Right -> go to next word.
 - [x] Ctrl+Left -> go to previous word.
 - [x] SPACE -> to move forwards all characters in right.
+- [ ] Ctrl+k -> move characters right of cursor
+- [ ] Ctrl+u -> move characters left of cursor
 
 - [x] put command history in: $HOME/.config/ush/history/commands
   - [ ] UP -> go to next command in history.

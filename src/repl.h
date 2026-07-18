@@ -5,6 +5,7 @@
 #include <termios.h>
 #include <filesystem>
 #include <string_view>
+#include <vector>
 
 #include "error.h"
 
@@ -69,8 +70,15 @@ namespace ush
       termios m_raw;
       termios m_original;
  
+      std::vector<std::string> m_dirsHistory;
+      std::vector<std::string> m_commandsHistory;
       std::array<char, charsForLine> m_chars {};
       std::array<char[charsForArg], maxArgs> m_args {};
+
+      bool m_inCommandHistoryTravelMode = true;
+	    uint32_t m_inCommandHistoryLastIndexVisited = 0U;
+	    bool m_inDirHistoryTravelMode = true;
+	    uint32_t m_inDirHistoryLastIndexVisited = 0U;
 
       void enableRawMode();
       void disableRawMode();
@@ -86,10 +94,13 @@ namespace ush
       bool saveFile(std::filesystem::path path,
           std::string_view file,
           std::string_view text);
-
       void saveCommandHistory(std::string str);
-
       void saveDirectoryHistory(std::string str);
+
+      bool readFile(const std::filesystem::path& path,
+        std::vector<std::string>& vec);
+      void readCommandHistory();
+      void readDirectoryHistory();
 
       static void SIGINTHandler(int signal);
   };

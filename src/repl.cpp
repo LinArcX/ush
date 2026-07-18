@@ -26,6 +26,12 @@ ush::Repl::Repl()
   // SIGINIT is disabled in ush main process, and just child process are allowed to have SIGINIT.
   // When it happens in a child-process, we exit from it and we just go to next line ready for another command in ush.
   std::signal(SIGINT, ush::Repl::SIGINTHandler);
+
+  readCommandHistory();
+  readDirectoryHistory();
+
+  m_inCommandHistoryLastIndexVisited = m_commandsHistory.size();
+  m_inDirHistoryLastIndexVisited = m_dirsHistory.size();
 }
 
 ush::Repl::~Repl()
@@ -60,7 +66,6 @@ int ush::Repl::loop(void)
 ush::Error ush::Repl::handleEventsAndPopulateChars()
 {
 	resetLineVarsShowPrompt();
-
   while (read(STDIN_FILENO, &c, 1) == 1) {
     // Ctrl-a: beginning of line
     if (c == 1) {
@@ -116,11 +121,44 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
       if (seq[0] == '[') {
         // Up - previous history
         if (seq[1] == 'A') {
+          if (m_inCommandHistoryTravelMode == true) {
+            clearLine();
+
+            if (m_inCommandHistoryLastIndexVisited > 0) {
+              std::string item = m_commandsHistory[m_inCommandHistoryLastIndexVisited--];
+              for (size_t i = 0; i < item.size(); i++) {
+                write(STDOUT_FILENO, &item[i], 1);
+                m_cursorPosition++;
+                m_charPosition++;
+              }
+            }
+
+            
+          }
           continue;
         }
 
         // Down - next history
         if (seq[1] == 'B') {
+          if (m_inCommandHistoryTravelMode == true) {
+            clearLine();
+
+            if (m_inCommandHistoryLastIndexVisited < m_commandsHistory.size()) {
+              std::string item = m_commandsHistory[m_inCommandHistoryLastIndexVisited++];
+              for (size_t i = 0; i < item.size(); i++) {
+                write(STDOUT_FILENO, &item[i], 1);
+                m_cursorPosition++;
+                m_charPosition++;
+              }
+            }
+ 
+            //std::string item = m_commandsHistory.front();
+            //for (size_t i = 0; i < item.size(); i++) {
+            //  write(STDOUT_FILENO, &item[i], 1);
+            //  m_cursorPosition++;
+            //  m_charPosition++;
+            //}
+          }
           continue;
         }
 
@@ -129,6 +167,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
           if (m_cursorPosition < m_charPosition) {
             write(STDOUT_FILENO, "\x1b[C", 3);
             m_cursorPosition++;
+            m_inCommandHistoryTravelMode = false;
+            m_inDirHistoryTravelMode = false;
           }
           continue;
         }
@@ -138,6 +178,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
           if (m_cursorPosition > 0) {
             write(STDOUT_FILENO, "\x1b[D", 3);
             m_cursorPosition--;
+            m_inCommandHistoryTravelMode = false;
+            m_inDirHistoryTravelMode = false;
           }
           continue;
         }
@@ -156,7 +198,10 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
 
           // Ctrl+Up
           if (extSeq[2] == 'A') {
-            write(STDOUT_FILENO, "u", 1);
+            if (m_inDirHistoryTravelMode == true) {
+              write(STDOUT_FILENO, "u", 1);
+            }
+ 
             continue;
           }
 
@@ -229,6 +274,9 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
 
 			m_chars[m_charPosition] = '\0';
 			write(STDOUT_FILENO, "\r\n", 2);
+      m_inCommandHistoryTravelMode = false;
+      m_inDirHistoryTravelMode = false;
+ 
 			return Error::eSuccess;
 		} else {
 		  // this is when you start to move cursor back and foth to put space/chars
@@ -258,6 +306,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
 		    m_charPosition++;
 		    write(STDOUT_FILENO, &c, 1);
 		  }
+      m_inCommandHistoryTravelMode = false;
+      m_inDirHistoryTravelMode = false; 
 		}
 
 		// If we have exceeded the buffer, we just clear the line
@@ -448,6 +498,8 @@ void ush::Repl::clearLine(void)
   write(STDOUT_FILENO, "\r", 1);
   write(STDOUT_FILENO, "\x1b[2K", 4);
 
+  m_inDirHistoryTravelMode = true;
+  m_inCommandHistoryTravelMode = true;
   resetLineVarsShowPrompt();
 }
 
@@ -572,6 +624,46 @@ void ush::Repl::moveForwardToFirstSpaceAfterCurrentWord()
     }
     break;
   }
+}
+
+bool ush::Repl::readFile(const std::filesystem::path& path,
+  std::vector<std::string>& vec)
+{
+  std::ifstream file(path, std::ios::binary);
+  if (!file) {
+    return false;
+  }
+
+  std::string line;
+  while (std::getline(file, line)) {
+    vec.push_back(std::move(line));
+  }
+
+  return !file.bad(); // true unless an I/O error occurred
+}
+
+void ush::Repl::readCommandHistory()
+{
+  std::filesystem::path path 
+    = std::filesystem::path(std::getenv("HOME"))
+                                       / ".config"
+                                       / "ush"
+                                       / "history"
+                                       / "commands";
+  readFile(path, m_commandsHistory);
+  std::erase(m_commandsHistory, "");
+}
+
+void ush::Repl::readDirectoryHistory()
+{
+  std::filesystem::path path 
+    = std::filesystem::path(std::getenv("HOME"))
+                                       / ".config"
+                                       / "ush"
+                                       / "history"
+                                       / "dirs";
+  readFile(path, m_dirsHistory);
+  std::erase(m_dirsHistory, "");
 }
 
 bool ush::Repl::saveFile(std::filesystem::path path,

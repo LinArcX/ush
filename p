@@ -129,7 +129,21 @@ menu () {
       cd ../..
       ;;
     "gf2")
-      gf2 -nx -ex "source breakpoints.gdb" build/debug/ush
+      # if you get this error: 
+      # Attaching to process 18446 ❌️ ptrace: Operation not permitted.
+      # just run:
+      #   sudo sysctl kernel.yama.ptrace_scope=0
+      gf2 -nx -ex "source breakpoints.gdb" -p "$(pidof ush)" >/dev/null 2>&1 & disown
+      sleep 2
+      wmctrl -r "gf2" -e 0,0,500,1820,550
+
+      #gf2 -nx -ex "source breakpoints.gdb" -p $(pidof ush) &
+      #until wmctrl -l | grep -q "gf2"; do
+      #  sleep 0.1
+      #done
+      #wmctrl -r "gf2" -e 0,0,500,1820,550
+      #wait
+      #wait
       ;;
     "rr record")
       /usr/bin/rr record build/debug/ush

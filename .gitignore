@@ -6,5 +6,6 @@ build/*
 .cache/*
 garbage/*
 windows/*
+gmon.out
 src/breakpoints.json
 compile_commands.json
