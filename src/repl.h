@@ -1,14 +1,13 @@
 #ifndef USH_REPL_H
 #define USH_REPL_H
 
-#include <array>
-#include <termios.h>
-#include <filesystem>
-#include <string_view>
-#include <vector>
-#include <sys/ioctl.h>
-
 #include "error.h"
+#include "box.h"
+#include "terminal.h"
+
+#include <array>
+#include <filesystem>
+#include <vector>
 
 constexpr uint32_t maxArgs = 64;
 constexpr uint32_t charsForLine = 1024;
@@ -20,11 +19,6 @@ namespace ush
   class Repl
   {
     public:
-      enum class EElnAttr : uint32_t {
-        eBackground,
-        eForeground
-      };
-
       Repl();
       ~Repl();
 
@@ -59,88 +53,48 @@ namespace ush
       [[nodiscard]] Error parseCharsAndPopulateCommandsArgs(void);
 
       [[nodiscard]] Error execute(void);
+
       [[nodiscard]] Error launchBinary(void);
 
-      void clearScreen(void);
+      void clearRepl(void);
+
       void clearLine(void);
+
       void resetLineVarsShowPrompt(void);
+
       [[nodiscard]] Error cd(void);
+
       [[nodiscard]] Error help(void);
+
       [[nodiscard]] Error exit(void);
 
     private:
-      // nerd-fonts
-      const char8_t* m_text = u8"\uf15c";
-      const char8_t* m_json = u8"\ueb0f";
-      const char8_t* m_html = u8"\ue60e";
-      const char8_t* m_css = u8"\ue6b8";
-      const char8_t* m_js = u8"\ue781";
-      const char8_t* m_csv = u8"\ueefc";
-      const char8_t* m_xml = u8"\ue8ea";
-      const char8_t* m_cpp = u8"\ue61d";
-      const char8_t* m_c = u8"\ue61e";
-      const char8_t* m_python = u8"\ue73c";
-      const char8_t* m_ruby = u8"\ue739";
-      const char8_t* m_bash = u8"\ue760";
-      const char8_t* m_font = u8"\uf031";
-      const char8_t* m_zip = u8"\ue6aa";
-      const char8_t* m_rust = u8"\ue7a8";
-      const char8_t* m_nim = u8"\ue841";
-      const char8_t* m_go = u8"\ue627";
-      const char8_t* m_zig = u8"\ue8ef";
-      const char8_t* m_java = u8"\ue738";
-      const char8_t* m_yaml = u8"\ue8eb";
-      const char8_t* m_toml = u8"\ue6b2";
-      const char8_t* m_markdown = u8"\uf48a";
-      const char8_t* m_audio = u8"\uec1b";
-      const char8_t* m_video = u8"\uf1c8";
-      const char8_t* m_image = u8"\uf03e";
-      const char8_t* m_pdf = u8"\uf1c1";
-      const char8_t* m_word = u8"\ue6a5";
-      const char8_t* m_excel = u8"\uf1c3";
-      const char8_t* m_powerpoint = u8"\uf1c4";
-      const char8_t* m_application = u8"\uf0be";
-      const char8_t* m_binary = u8"\ueae8";
-      const char8_t* m_library = u8"\ueb9c";
-      const char8_t* m_file = u8"\uf15b";
-      const char8_t* m_folder = u8"\uf07b";
-      const char8_t* m_debug = u8"\uead8";
-      
-      
-        
+      enum class EElnAttr : uint32_t {
+        eBackground,
+        eForeground
+      };
+
       char c;
       uint32_t m_elnNumber = 1U;
       uint32_t m_charPosition = 0U;
       uint32_t m_cursorPosition = 0U;
 
-      winsize m_ws{};
-      termios m_raw;
-      termios m_original;
+      Box m_pwdBox;
+      Box m_replBox;
+      Box m_gitBox;
+      Terminal m_terminal;
  
       std::vector<std::string> m_dirsHistory;
       std::vector<std::string> m_commandsHistory;
       std::array<char, charsForLine> m_chars {};
       std::array<char[charsForArg], maxArgs> m_args {};
 
-      bool m_inCommandHistoryTravelMode = true;
-	    uint32_t m_inCommandHistoryLastIndexVisited = 0U;
 	    bool m_inDirHistoryTravelMode = true;
+      bool m_inCommandHistoryTravelMode = true;
 	    uint32_t m_inDirHistoryLastIndexVisited = 0U;
+	    uint32_t m_inCommandHistoryLastIndexVisited = 0U;
 
-      void enableRawMode();
-      void disableRawMode();
-
-      void moveBackToFirstCharOfWord();
-
-      void moveBackToFirstNonSpaceChar();
-
-      void moveForwardToFirstNonSpaceChar();
-
-      void moveForwardToFirstSpaceAfterCurrentWord();
-
-      void showElns(std::string path);
- 
-      bool lineIsEmpty();
+      // configs
       bool saveFile(std::filesystem::path path,
           std::string_view file,
           std::string_view text);
@@ -152,40 +106,28 @@ namespace ush
       void readCommandHistory();
       void readDirectoryHistory();
 
+      // eln
+      void showElns(std::string path);
+
       void drawElnNode(const char* name,
           size_t size,
           const char8_t* iconName,
           EElnAttr attr,
           uint32_t r, uint32_t g, uint32_t b);
 
+      // repl
       static void SIGINTHandler(int signal);
 
-      /**
-       * @brief detect the type of a file
-       *
-       * @param fileName IN
-       * @param type OUT argument which contains one of these:
-       *      0 -> unknown
-       *      1 -> image,
-       *      2 -> video
-       *      3 -> audio
-       *      4 -> text
-       *      5 -> application
-       * @return true if it can detect the file type, otherwise false.
-       */
-      //bool getFileType(const char * const fileName,
-      //                int8_t* type);
-      /**
-       * @brief detect the extension of a file
-       *
-       * @param fileName IN
-       * @param extName OUT
-       * @param extNameSize IN
-       * @return true if it can detect the file extension, otherwise false.
-       */
-      //bool getExtensionOfFile(const char * const fileName,
-      //                        char extName[],
-      //                        uint32_t extNameSize);
+      bool lineIsEmpty();
+
+      void moveBackToFirstCharOfWord();
+
+      void moveBackToFirstNonSpaceChar();
+
+      void moveForwardToFirstNonSpaceChar();
+
+      void moveForwardToFirstSpaceAfterCurrentWord();
   };
 }
 #endif // USH_REPL_H
+

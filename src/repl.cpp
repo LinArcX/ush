@@ -1,4 +1,5 @@
 #include "repl.h"
+#include "icons.h"
 
 #include <print>
 #include <stdio.h>
@@ -16,35 +17,51 @@
 #include <Windows.h>
 #endif
 
+// static
 void ush::Repl::SIGINTHandler(int signal)
 {
   write(STDOUT_FILENO, "\r\n", 2);
 }
 
+// public
 ush::Repl::Repl()
 {
-  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &m_ws) == -1) {
-    perror("ioctl");
+  if (Error::eSuccess == m_terminal.requestGetTerminalWindowSize()) {
+    m_pwdBox.draw(1,
+        1,
+        m_terminal.getTerminalWindowSize().ws_col,
+        3); // 1 = top border, 1 = bottom border, 1 = content
+
+    m_replBox.draw(1,
+        m_pwdBox.m_y + m_pwdBox.m_height,
+        m_terminal.getTerminalWindowSize().ws_col, 
+        m_terminal.getTerminalWindowSize().ws_row - (m_pwdBox.m_height + m_gitBox.m_height));
+
+    m_gitBox.draw(1,
+        m_replBox.m_height,
+        m_terminal.getTerminalWindowSize().ws_col,
+        3);
+ 
+    if (m_terminal.enableRawMode() == Error::eSuccess) {
+      // SIGINIT is disabled in ush main process, and just child process are allowed to have SIGINIT.
+      // When it happens in a child-process, we exit from it and we just go to next line ready for another command in ush.
+      std::signal(SIGINT, ush::Repl::SIGINTHandler);
+
+      readCommandHistory();
+      readDirectoryHistory();
+    }
   }
-  enableRawMode();
-
-  // SIGINIT is disabled in ush main process, and just child process are allowed to have SIGINIT.
-  // When it happens in a child-process, we exit from it and we just go to next line ready for another command in ush.
-  std::signal(SIGINT, ush::Repl::SIGINTHandler);
-
-  readCommandHistory();
-  readDirectoryHistory();
 }
 
 ush::Repl::~Repl()
 {
-  disableRawMode();
+  m_terminal.disableRawMode();
 }
 
 int ush::Repl::loop(void)
 {
-  clearScreen();
-  showElns(std::filesystem::current_path());
+  clearRepl();
+  //showElns(std::filesystem::current_path());
 
   while(true) {
     // reset arrays
@@ -92,7 +109,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
 
     // Ctrl-l
     if (c == 12) {
-      clearScreen();
+      clearRepl();
       showElns(std::filesystem::current_path());
       resetLineVarsShowPrompt();
       continue;
@@ -421,7 +438,7 @@ ush::Error ush::Repl::execute()
 {
   // search in builtin commands first
   if (std::string_view(m_args[0]) == std::string_view("clear")) {
-	  clearScreen();
+	  clearRepl();
   }
   else if (std::string_view(m_args[0]) == std::string_view("cd")) {
 	  return cd();
@@ -481,7 +498,7 @@ ush::Error ush::Repl::launchBinary()
   else {
 	  int status;
 	  pid_t pid;
-    disableRawMode();
+    m_terminal.disableRawMode();
 	  pid = fork();
 	  if (pid == 0) {
 	  	// Child process
@@ -497,7 +514,7 @@ ush::Error ush::Repl::launchBinary()
 	  	// Parent process
 	  	do {
 	  		waitpid(pid, &status, WUNTRACED);
-	      enableRawMode();
+	      m_terminal.enableRawMode();
         std::string command;
         for (size_t i = 0; i < argc; i++) {
           command += argv[i];
@@ -511,71 +528,15 @@ ush::Error ush::Repl::launchBinary()
 	return Error::eSuccess;
 }
 
-void ush::Repl::clearScreen(void)
-{
-#if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-  HANDLE hStdout;
-  CHAR_INFO fill;
-  COORD scrollTarget;
-  SMALL_RECT scrollRect;
-  CONSOLE_SCREEN_BUFFER_INFO csbi;
-
-  hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-
-  // Get the number of character cells in the current buffer.
-  if (!GetConsoleScreenBufferInfo(hStdout, &csbi)) {
-    return Error::eError;
-  }
-
-  // Scroll the rectangle of the entire buffer.
-  scrollRect.Left = 0;
-  scrollRect.Top = 0;
-  scrollRect.Right = csbi.dwSize.X;
-  scrollRect.Bottom = csbi.dwSize.Y;
-
-  // Scroll it upwards off the top of the buffer with a magnitude of the entire height.
-  scrollTarget.X = 0;
-  scrollTarget.Y = (SHORT)(0 - csbi.dwSize.Y);
-
-  // Fill with empty spaces with the buffer's default text attribute.
-  fill.Char.UnicodeChar = TEXT(' ');
-  fill.Attributes = csbi.wAttributes;
-
-  // Do the scroll
-  ScrollConsoleScreenBuffer(hStdout, &scrollRect, NULL, scrollTarget, &fill);
-
-  // Move the cursor to the top left corner too.
-  csbi.dwCursorPosition.X = 0;
-  csbi.dwCursorPosition.Y = 0;
-
-  SetConsoleCursorPosition(hStdout, csbi.dwCursorPosition);
-#elif __linux__
-  // clear screen
-  constexpr char clear_seq[] = "\x1b[3J\x1b[2J\x1b[H";
-  write(STDOUT_FILENO, clear_seq, sizeof(clear_seq) - 1);
-
-  m_charPosition = 0U;
-  m_cursorPosition = 0U;
-#endif
-}
- 
-void ush::Repl::clearLine(void)
-{
-  // clear line
-  write(STDOUT_FILENO, "\r", 1);
-  write(STDOUT_FILENO, "\x1b[2K", 4);
-
-  m_inDirHistoryTravelMode = true;
-  m_inCommandHistoryTravelMode = true;
-  resetLineVarsShowPrompt();
-}
-
 void ush::Repl::resetLineVarsShowPrompt()
 {
   // reset variables and show prompt again
   m_charPosition = 0U;
   m_cursorPosition = 0U;
-  write(STDOUT_FILENO, " > ", 3);
+
+  write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::hollowRightPointingSmallTriangle),
+    std::char_traits<char8_t>::length(Icons::hollowRightPointingSmallTriangle));
+  write(STDOUT_FILENO, " ", 1);
 }
 
 ush::Error ush::Repl::cd()
@@ -588,7 +549,7 @@ ush::Error ush::Repl::cd()
   }
   saveDirectoryHistory(std::string("cd ") + m_args[1]);
 
-  clearScreen();
+  clearRepl();
   showElns(std::filesystem::current_path());
   //resetLineVarsShowPrompt();
 
@@ -604,28 +565,6 @@ ush::Error ush::Repl::help(void)
 ush::Error ush::Repl::exit(void)
 {
   return Error::eExit;
-}
-
-void ush::Repl::enableRawMode()
-{
-  tcgetattr(STDIN_FILENO, &m_original);
-
-  m_raw = m_original;
-  //raw.c_lflag &= ~(ICANON | ECHO | ECHOCTL); // IEXTEN | ISIG
-  m_raw.c_lflag &= ~(ICANON | ECHO | IEXTEN | ISIG);
-  //raw.c_iflag &= ~(IXON | ICRNL); // BRKINT | INPCK | ISTRIP
-  m_raw.c_iflag &= ~(IXON | ICRNL | BRKINT | INPCK | ISTRIP);
-  // raw.c_oflag &= ~(OPOST);
-  m_raw.c_cflag |= CS8;
-
-  m_raw.c_cc[VMIN] = 1;
-  m_raw.c_cc[VTIME] = 0;
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &m_raw);
-}
-
-void ush::Repl::disableRawMode()
-{
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &m_original);
 }
 
 void ush::Repl::moveBackToFirstCharOfWord()
@@ -818,7 +757,7 @@ void ush::Repl::showElns(std::string path)
       write(STDOUT_FILENO, " ", 1);
 
       if (entry.is_directory()) {
-        drawElnNode(name.data(), name.size(), m_folder, EElnAttr::eForeground, 102, 153, 204);
+        drawElnNode(name.data(), name.size(), Icons::folder, EElnAttr::eForeground, 102, 153, 204);
         continue;
       } 
       else if (entry.is_regular_file()) {
@@ -826,300 +765,300 @@ void ush::Repl::showElns(std::string path)
         magic_load(m, nullptr);
         const char* type = magic_file(m, name.data());
         if(std::string(type).compare("image/jpeg") == 0) {
-          drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::image, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("video/mp4") == 0) {
-          drawElnNode(name.data(), name.size(), m_video, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::video, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/plain") == 0) {
-          drawElnNode(name.data(), name.size(), m_text, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::text, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/html") == 0) {
-          drawElnNode(name.data(), name.size(), m_html, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::html, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/css") == 0) {
-          drawElnNode(name.data(), name.size(), m_css, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::css, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/javascript") == 0) {
-          drawElnNode(name.data(), name.size(), m_js, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::js, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/markdown") == 0) {
-          drawElnNode(name.data(), name.size(), m_markdown, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::markdown, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/csv") == 0) {
-          drawElnNode(name.data(), name.size(), m_csv, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::csv, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/xml") == 0) {
-          drawElnNode(name.data(), name.size(), m_xml, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::xml, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/x-c") == 0) {
-          drawElnNode(name.data(), name.size(), m_c, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::c, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/x-c++") == 0) {
-          drawElnNode(name.data(), name.size(), m_cpp, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::cpp, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/x-python") == 0) {
-          drawElnNode(name.data(), name.size(), m_python, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::python, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/x-rust") == 0) {
-          drawElnNode(name.data(), name.size(), m_rust, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::rust, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/x-go") == 0) {
-          drawElnNode(name.data(), name.size(), m_go, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::go, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/x-zig") == 0) {
-          drawElnNode(name.data(), name.size(), m_zig, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::zig, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/x-java") == 0) {
-          drawElnNode(name.data(), name.size(), m_java, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::java, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("text/x-shellscript") == 0) {
-          drawElnNode(name.data(), name.size(), m_bash, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::bash, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/json") == 0) {
-          drawElnNode(name.data(), name.size(), m_json, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::json, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/xml") == 0) {
-          drawElnNode(name.data(), name.size(), m_xml, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::xml, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/yaml") == 0) {
-          drawElnNode(name.data(), name.size(), m_yaml, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::yaml, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/toml") == 0) {
-          drawElnNode(name.data(), name.size(), m_toml, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::toml, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("image/png") == 0) {
-          drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::image, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("image/gif") == 0) {
-          drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::image, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("image/webp") == 0) {
-          drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::image, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("image/svg+xml") == 0) {
-          drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::image, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("image/bmp") == 0) {
-          drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::image, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("image/tiff") == 0) {
-          drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::image, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("image/x-icon") == 0) {
-          drawElnNode(name.data(), name.size(), m_image, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::image, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("audio/mpeg") == 0) {
-          drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::audio, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("audio/flac") == 0) {
-          drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::audio, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("audio/wav") == 0) {
-          drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::audio, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("audio/ogg") == 0) {
-          drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::audio, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("audio/aac") == 0) {
-          drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::audio, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("audio/mp4") == 0) {
-          drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::audio, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("audio/webm") == 0) {
-          drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::audio, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("audio/midi") == 0) {
-          drawElnNode(name.data(), name.size(), m_audio, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::audio, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("video/x-matroska") == 0) {
-          drawElnNode(name.data(), name.size(), m_video, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::video, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("video/webm") == 0) {
-          drawElnNode(name.data(), name.size(), m_video, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::video, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("video/x-msvideo") == 0) {
-          drawElnNode(name.data(), name.size(), m_video, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::video, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("video/quicktime") == 0) {
-          drawElnNode(name.data(), name.size(), m_video, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::video, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("video/mpeg") == 0) {
-          drawElnNode(name.data(), name.size(), m_video, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::video, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("video/ogg") == 0) {
-          drawElnNode(name.data(), name.size(), m_video, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::video, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/pdf") == 0) {
-          drawElnNode(name.data(), name.size(), m_pdf, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::pdf, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/rtf") == 0) {
-          drawElnNode(name.data(), name.size(), m_word, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::word, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/msword") == 0) {
-          drawElnNode(name.data(), name.size(), m_word, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::word, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/vnd.openxmlformats-officedocument.wordprocessingml.document") == 0) {
-          drawElnNode(name.data(), name.size(), m_word, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::word, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/vnd.ms-excel") == 0) {
-          drawElnNode(name.data(), name.size(), m_excel, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::excel, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") == 0) {
-          drawElnNode(name.data(), name.size(), m_excel, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::excel, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/vnd.ms-powerpoint") == 0) {
-          drawElnNode(name.data(), name.size(), m_powerpoint, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::powerpoint, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/vnd.openxmlformats-officedocument.presentationml.presentation") == 0) {
-          drawElnNode(name.data(), name.size(), m_powerpoint, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::powerpoint, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/zip") == 0) {
-          drawElnNode(name.data(), name.size(), m_zip, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::zip, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-tar") == 0) {
-          drawElnNode(name.data(), name.size(), m_zip, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::zip, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/gzip") == 0) {
-          drawElnNode(name.data(), name.size(), m_zip, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::zip, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-bzip2") == 0) {
-          drawElnNode(name.data(), name.size(), m_zip, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::zip, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-xz") == 0) {
-          drawElnNode(name.data(), name.size(), m_zip, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::zip, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-7z-compressed") == 0) {
-          drawElnNode(name.data(), name.size(), m_zip, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::zip, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/vnd.rar") == 0) {
-          drawElnNode(name.data(), name.size(), m_zip, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::zip, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-zstd") == 0) {
-          drawElnNode(name.data(), name.size(), m_zip, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::zip, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-executable") == 0) {
-          drawElnNode(name.data(), name.size(), m_binary, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::binary, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-sharedlib") == 0) {
-          drawElnNode(name.data(), name.size(), m_library, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::library, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-pie-executable") == 0) {
-          drawElnNode(name.data(), name.size(), m_binary, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::binary, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-object") == 0) {
-          drawElnNode(name.data(), name.size(), m_binary, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::binary, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-mach-binary") == 0) {
-          drawElnNode(name.data(), name.size(), m_binary, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::binary, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-dosexec") == 0) {
-          drawElnNode(name.data(), name.size(), m_binary, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::binary, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("font/ttf") == 0) {
-          drawElnNode(name.data(), name.size(), m_font, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::font, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("font/otf") == 0) {
-          drawElnNode(name.data(), name.size(), m_font, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::font, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("font/woff") == 0) {
-          drawElnNode(name.data(), name.size(), m_font, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::font, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("font/woff2") == 0) {
-          drawElnNode(name.data(), name.size(), m_font, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::font, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/octet-stream") == 0) {
-          drawElnNode(name.data(), name.size(), m_binary, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::binary, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-ole-storage") == 0) {
-          drawElnNode(name.data(), name.size(), m_binary, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::binary, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
         if(std::string(type).compare("application/x-ms-pdb") == 0) {
-          drawElnNode(name.data(), name.size(), m_debug, EElnAttr::eForeground, 169, 218, 169);
+          drawElnNode(name.data(), name.size(), Icons::debug, EElnAttr::eForeground, 169, 218, 169);
           continue;
         }
-        drawElnNode(name.data(), name.size(), m_file, EElnAttr::eForeground, 169, 218, 169);
+        drawElnNode(name.data(), name.size(), Icons::file, EElnAttr::eForeground, 169, 218, 169);
         continue;
       } 
       else {
-        drawElnNode(name.data(), name.size(), m_file, EElnAttr::eForeground, 102, 153, 204);
+        drawElnNode(name.data(), name.size(), Icons::file, EElnAttr::eForeground, 102, 153, 204);
         continue;
       }
     }
   }
 
-  for (size_t i = 0; i < m_ws.ws_col; i++) {
+  for (size_t i = 0; i < m_terminal.getTerminalWindowSize().ws_col; i++) {
     write(STDOUT_FILENO, "\033[38;2;179;179;179m", 20);
     write(STDOUT_FILENO, "-", 1);
     write(STDOUT_FILENO, "\033[0m", 4);
@@ -1158,4 +1097,21 @@ void ush::Repl::drawElnNode(const char* name,
 
   write(STDOUT_FILENO, "\r\n", 2);
   m_elnNumber++;
+}
+
+void ush::Repl::clearRepl(void)
+{
+  m_replBox.clearBox();
+
+  m_charPosition = 0U;
+  m_cursorPosition = 0U;
+}
+ 
+void ush::Repl::clearLine(void)
+{
+  m_replBox.clearLine();
+
+  m_inDirHistoryTravelMode = true;
+  m_inCommandHistoryTravelMode = true;
+  resetLineVarsShowPrompt();
 }

@@ -7,8 +7,8 @@ namespace ush
 {
   enum class Error : uint32_t
   {
-    eSuccess,
     eError,
+    eSuccess,
     eExit,
     eUnknown,
     eClearScreen,

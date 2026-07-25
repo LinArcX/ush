@@ -20,6 +20,8 @@ a universall shell with these features:
 - [x] SPACE -> to move forwards all characters in right.
 - [ ] Ctrl+k -> clear characters from right of the cursor
 - [ ] Ctrl+u -> clear characters from left of the cursor
+- [ ] show PWD on top
+- [ ] ability to move between dirs with .. and name of directories
 
 - [x] put command history in: $HOME/.config/ush/history/commands
   - [x] UP -> go to next command in history.
@@ -31,6 +33,7 @@ a universall shell with these features:
   - [x] Alt+k -> Go to previous directory in history
 
 - [x] implement [ELN](https://github.com/leo-arch/clifm/wiki/Common-Operations#elns) inspired by clifm.
+  - [ ] improve loading time
   - [ ] for directories shows number of files/dirs inside it as /NUMBER at end of ELN.
   - [ ] if the group is root, show file as green, show dir as green with background.
   - [ ] if the file is readonly, show it as grey.
