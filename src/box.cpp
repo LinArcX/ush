@@ -7,8 +7,12 @@
 
 ush::Error ush::Box::moveCursor(uint32_t row, uint32_t col)
 {
-  if(row > Terminal::getTerminalWindowSize().ws_row
-      || col > Terminal::getTerminalWindowSize().ws_col) {
+  //  Terminal::getTerminalWindowSize().ws_row
+  //   col > Terminal::getTerminalWindowSize().ws_col
+  if(row < m_row || row > m_position.m_row) {
+    return Error::eError;
+  }
+  if(col < m_col || row > m_position.m_col) {
     return Error::eError;
   }
 
@@ -59,8 +63,11 @@ ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t h
   m_row = row;
   m_width = width;
   m_height = height;
-  m_position.m_row = m_row;
-  m_position.m_col = m_col;
+
+  m_position.m_row = m_row + 1;
+  m_position.m_col = m_col + 1;
+  m_position.m_width = m_width - 2;
+  m_position.m_height = m_height - 2;
 
   // top border
   {
@@ -199,5 +206,43 @@ ush::Error ush::Box::clearLine(uint32_t row, uint32_t col)
     return Error::eError;
   }
 
+  return Error::eSuccess;
+}
+
+ush::Error ush::Box::writeSpace()
+{
+  if (moveCursor(m_position.m_row, m_position.m_col++) != Error::eSuccess) {
+    return Error::eError;
+  }
+  Terminal::writeSpace();
+  return Error::eSuccess;
+}
+
+ush::Error ush::Box::writeNewLine()
+{
+  if (moveCursor(m_position.m_row++, m_position.m_col) != Error::eSuccess) {
+    return Error::eError;
+  }
+  Terminal::writeNewLine();
+  return Error::eSuccess;
+}
+
+ush::Error ush::Box::writeIcon(const char8_t* iconName)
+{
+  if (moveCursor(m_position.m_row, m_position.m_col++) != Error::eSuccess) {
+    return Error::eError;
+  }
+  Terminal::writeIcon(iconName);
+  return Error::eSuccess;
+}
+
+ush::Error ush::Box::writeText(const char* name, size_t size)
+{
+  if (moveCursor(m_position.m_row, m_position.m_col) != Error::eSuccess) {
+    return Error::eError;
+  }
+  m_position.m_col += size;
+
+  Terminal::writeText(name, size);
   return Error::eSuccess;
 }
