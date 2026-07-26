@@ -104,7 +104,11 @@ menu () {
       clear
       echo ">>> creating build/debug directory"
       mkdir -p build/debug
- 
+
+      echo ">>> deleting old .gcda/.gcno files in build/debug directory"
+      find . -name "*.gcda" -delete
+      find . -name "*.gcno" -delete
+
       echo ">>> compiling (debug mode)"
       bear -- g++ -std=c++23 -g -pg -O0 -DDEBUG --coverage \
           -Wformat=2 -Wall -Werror -Wextra -Wunused-function -Wpedantic -Wno-unused-parameter \

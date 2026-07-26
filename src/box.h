@@ -1,6 +1,7 @@
 #ifndef USH_BOX_H
 #define USH_BOX_H
 
+#include "error.h"
 #include <cstdint>
 
 namespace ush
@@ -8,21 +9,31 @@ namespace ush
   class Box 
   {
     public:
-      uint32_t m_x;
+      uint32_t m_col;
 
-      uint32_t m_y;
+      uint32_t m_row;
 
       uint32_t m_width;
 
       uint32_t m_height;
+
+      class Position{
+        public:
+          uint32_t m_row;
+          uint32_t m_col;
+      };
+
+      Position m_position;
  
-      void moveCursor(uint32_t row, uint32_t col);
+      Error moveCursor(uint32_t row, uint32_t col);
 
-      void draw(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+      Error draw(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 
-      void clearBox(void);
+      Error drawContent(uint32_t& row, uint32_t& col);
 
-      void clearLine(void);
+      Error clearBox(void);
+
+      Error clearLine(uint32_t row, uint32_t col);
 
     private:
   };

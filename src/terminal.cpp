@@ -1,5 +1,11 @@
 #include "terminal.h"
+
 #include <unistd.h>
+#include <format>
+#include <string_view>
+
+winsize ush::Terminal::m_ws = {};
+termios ush::Terminal::m_original = {};
 
 ush::Error ush::Terminal::Terminal::requestGetTerminalWindowSize()
 {
@@ -36,4 +42,43 @@ ush::Error ush::Terminal::disableRawMode()
     return Error::eSuccess;
   }
   return Error::eError;
+}
+
+void ush::Terminal::startColor(EColorAttr attr,
+  uint32_t r, uint32_t g, uint32_t b)
+{
+  std::string str;
+  if (attr == EColorAttr::eForeground) {
+    str = std::format("\033[38;2;{};{};{}m", r, g, b);
+  }
+  else {
+    str = std::format("\033[48;2;{};{};{}m", r, g, b);
+  }
+  write(STDOUT_FILENO, str.data(), str.size());
+}
+
+void ush::Terminal::endColor()
+{
+  write(STDOUT_FILENO, "\033[0m", 4);
+}
+
+void ush::Terminal::writeSpace()
+{
+  write(STDOUT_FILENO, " ", 1);
+}
+
+void ush::Terminal::writeNewLine()
+{
+  write(STDOUT_FILENO, "\r\n", 2);
+}
+
+void ush::Terminal::writeIcon(const char8_t* iconName)
+{
+  write(STDOUT_FILENO, reinterpret_cast<const char*>(iconName),
+      std::char_traits<char8_t>::length(iconName));
+}
+
+void ush::Terminal::writeText(const char* name, size_t size)
+{
+  write(STDOUT_FILENO, name, size);
 }

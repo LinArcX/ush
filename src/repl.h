@@ -56,9 +56,9 @@ namespace ush
 
       [[nodiscard]] Error launchBinary(void);
 
-      void clearRepl(void);
+      Error clearRepl(void);
 
-      void clearLine(void);
+      Error clearLine(void);
 
       void resetLineVarsShowPrompt(void);
 
@@ -69,20 +69,22 @@ namespace ush
       [[nodiscard]] Error exit(void);
 
     private:
-      enum class EElnAttr : uint32_t {
-        eBackground,
-        eForeground
-      };
-
       char c;
       uint32_t m_elnNumber = 1U;
-      uint32_t m_charPosition = 0U;
-      uint32_t m_cursorPosition = 0U;
+      //class Position {
+      //  public:
+      //    uint32_t x = 0U;
+      //    uint32_t y = 0U;
+      //};
+      //Position m_charPosition;
+      //Position m_cursorPosition;
 
+      uint32_t m_charPosition = 1U;
+      uint32_t m_cursorPosition = 1U;
+ 
       Box m_pwdBox;
       Box m_replBox;
       Box m_gitBox;
-      Terminal m_terminal;
  
       std::vector<std::string> m_dirsHistory;
       std::vector<std::string> m_commandsHistory;
@@ -112,7 +114,7 @@ namespace ush
       void drawElnNode(const char* name,
           size_t size,
           const char8_t* iconName,
-          EElnAttr attr,
+          Terminal::EColorAttr attr,
           uint32_t r, uint32_t g, uint32_t b);
 
       // repl

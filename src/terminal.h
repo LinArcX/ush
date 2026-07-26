@@ -2,6 +2,7 @@
 #define USH_TERMINAL_H
 
 #include "error.h"
+#include <cstddef>
 #include <sys/ioctl.h>
 #include <termios.h>
 
@@ -10,15 +11,39 @@ namespace ush
   class Terminal
   {
     public:
-      Error requestGetTerminalWindowSize();
-      winsize& getTerminalWindowSize() { return m_ws; }
+      enum class EColorAttr : uint32_t {
+        eBackground,
+        eForeground
+      };
 
-      Error enableRawMode();
-      Error disableRawMode();
+      static Error requestGetTerminalWindowSize();
+
+      static winsize& getTerminalWindowSize() { return m_ws; }
+
+      static Error enableRawMode();
+
+      static Error disableRawMode();
+
+      static void startColor(EColorAttr attr, uint32_t r, uint32_t g, uint32_t b);
+
+      static void endColor();
+
+      static void writeSpace();
+
+      static void writeNewLine();
+
+      static void writeIcon(const char8_t* iconName);
+
+      static void writeText(const char* name, size_t size);
 
     private:
-      winsize m_ws;
-      termios m_original;
+      Terminal() = delete;
+
+      ~Terminal() = delete;
+
+      static winsize m_ws;
+
+      static termios m_original;
   };
 }
  

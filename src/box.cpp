@@ -1,86 +1,141 @@
 #include "box.h"
 #include "icons.h"
+#include "terminal.h"
 
 #include <string>
 #include <unistd.h>
 
-void ush::Box::moveCursor(uint32_t row, uint32_t col)
+ush::Error ush::Box::moveCursor(uint32_t row, uint32_t col)
 {
-  std::string s =
+  if(row > Terminal::getTerminalWindowSize().ws_row
+      || col > Terminal::getTerminalWindowSize().ws_col) {
+    return Error::eError;
+  }
+
+  std::string str =
     "\033[" +
     std::to_string(row) +
     ";" +
     std::to_string(col) +
     "H";
 
-  write(STDOUT_FILENO, s.data(), s.size());
+  write(STDOUT_FILENO, str.data(), str.size());
+  return Error::eSuccess;
 }
 
-void ush::Box::draw(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+ush::Error ush::Box::drawContent(uint32_t& row, uint32_t& col)
 {
-  m_x = x;
-  m_y = y;
+  // left
+  if(moveCursor(row, col++) != Error::eSuccess) {
+    return Error::eError;
+  }
+  write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::left),
+    std::char_traits<char8_t>::length(Icons::left));
+
+  // right
+  col = col + (m_width - 2);
+  if (moveCursor(row, col) != Error::eSuccess) {
+    return Error::eError;
+  }
+
+  if (moveCursor(row, col++) != Error::eSuccess) {
+    return Error::eError;
+  }
+  write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::right),
+    std::char_traits<char8_t>::length(Icons::right));
+
+  if (moveCursor(row++, col) != Error::eSuccess) {
+    return Error::eError;
+  }
+  write(STDOUT_FILENO, "\r\n", 2);
+  col = m_col;
+
+  return Error::eSuccess;
+}
+
+ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t height)
+{
+  m_col = col;
+  m_row = row;
   m_width = width;
   m_height = height;
-
-  moveCursor(x, y);
+  m_position.m_row = m_row;
+  m_position.m_col = m_col;
 
   // top border
   {
     // top-left
+    if (moveCursor(row, col++) != Error::eSuccess) {
+      return Error::eError;
+    }
     write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::topLeft),
       std::char_traits<char8_t>::length(Icons::topLeft));
 
     // top
-    for (uint32_t i = 1; i < width - 1; i++) {
+    for (uint32_t i = col; i < m_width; i++) {
+      if (moveCursor(row, col++) != Error::eSuccess) {
+        return Error::eError;
+      }
       write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::top),
         std::char_traits<char8_t>::length(Icons::top));
     }
 
     // top-right
+    if (moveCursor(row, col++) != Error::eSuccess) {
+      return Error::eError;
+    }
     write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::topRight),
       std::char_traits<char8_t>::length(Icons::topRight));
 
+    if (moveCursor(row++, col) != Error::eSuccess) {
+      return Error::eError;
+    }
     write(STDOUT_FILENO, "\r\n", 2);
+    col = m_col;
   }
 
   // content border
-  {
-    for (uint32_t i = x + 1; i < height - 1; i++) {
-      // left
-      write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::left),
-        std::char_traits<char8_t>::length(Icons::left));
-
-      // right
-      moveCursor(x + 1, y);
-      write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::right),
-        std::char_traits<char8_t>::length(Icons::right));
- 
-      write(STDOUT_FILENO, "\r\n", 2);
+  for (uint32_t i = 1; i < m_height - 1; i++) {
+    if (drawContent(row, col) != Error::eSuccess) {
+      return Error::eError;
     }
   }
 
   // bottom border
   {
     // bottom-left
+    if (moveCursor(row, col++) != Error::eSuccess) {
+      return Error::eError;
+    }
     write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::bottomLeft),
       std::char_traits<char8_t>::length(Icons::bottomLeft));
 
     // bottom
-    for (uint32_t i = 1; i < width - 1; i++) {
+    for (uint32_t i = col; i < m_width; i++) {
+      if (moveCursor(row, col++) != Error::eSuccess) {
+        return Error::eError;
+      }
       write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::bottom),
         std::char_traits<char8_t>::length(Icons::bottom));
     }
 
     // bottom-right
+    if (moveCursor(row, col++) != Error::eSuccess) {
+      return Error::eError;
+    }
     write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::bottomRight),
       std::char_traits<char8_t>::length(Icons::bottomRight));
 
+    if (moveCursor(row++, col) != Error::eSuccess) {
+      return Error::eError;
+    }
     write(STDOUT_FILENO, "\r\n", 2);
+    col = m_col;
   }
+  return Error::eSuccess;
 }
 
-void ush::Box::clearBox(void)
+ush::Error ush::Box::clearBox(void)
 {
 #if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
   HANDLE hStdout;
@@ -119,18 +174,30 @@ void ush::Box::clearBox(void)
 
   SetConsoleCursorPosition(hStdout, csbi.dwCursorPosition);
 #elif __linux__
-  for (size_t i = 0; i < m_height; i++) {
-    clearLine();
+  for (size_t i = ++m_row; i < m_height - 1; i++) {
+    if (clearLine(i, m_col) != Error::eSuccess) {
+      return Error::eError;
+    }
   }
-  moveCursor(m_x, m_y);
+  return Error::eSuccess;
 #endif
 }
  
-void ush::Box::clearLine(void)
+ush::Error ush::Box::clearLine(uint32_t row, uint32_t col)
 {
   //constexpr char clear_seq[] = "\x1b[3J\x1b[2J\x1b[H";
   //constexpr char clear_seq[] = "\x1b[2k";
   //write(STDOUT_FILENO, clear_seq, sizeof(clear_seq) - 1);
+  if (moveCursor(row, col) != Error::eSuccess) {
+    return Error::eError;
+  }
   write(STDOUT_FILENO, "\r", 1);
   write(STDOUT_FILENO, "\x1b[2K", 4);
+
+  // re-draw current row
+  if (drawContent(row, col) != Error::eSuccess) {
+    return Error::eError;
+  }
+
+  return Error::eSuccess;
 }
