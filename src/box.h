@@ -2,6 +2,8 @@
 #define USH_BOX_H
 
 #include "error.h"
+#include "terminal.h"
+
 #include <cstdint>
 #include <cstddef>
 
@@ -17,6 +19,8 @@ namespace ush
       uint32_t m_width; // right vertical border, draws here
       
       uint32_t m_height; // bottom horizontal border, draws here
+
+      Terminal m_terminal;
 
       class Position{
         public:
@@ -57,9 +61,7 @@ namespace ush
 }
 #endif // USH_BOX_H
 
-//#include "terminal.h"
 //#include <termio.h>
-//Terminal terminal;
 //struct Rect {
 //  uint16_t x;
 //  uint16_t y;

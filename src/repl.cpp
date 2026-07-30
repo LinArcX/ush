@@ -19,7 +19,9 @@
 // static
 void ush::Repl::SIGINTHandler(int signal)
 {
-  write(STDOUT_FILENO, "\r\n", 2);
+  Terminal::goTostartOfLine();
+  Terminal::makeNewLine();
+  //write(STDOUT_FILENO, "\r\n", 2);
 }
 
 // public
@@ -1067,7 +1069,8 @@ void ush::Repl::showElns(std::string path)
 
   for (size_t i = 0; i < Terminal::getTerminalWindowSize().ws_col; i++) {
     write(STDOUT_FILENO, "\033[38;2;179;179;179m", 20);
-    write(STDOUT_FILENO, "-", 1);
+    Terminal::writeChar("-");
+    //write(STDOUT_FILENO, "-", 1);
     write(STDOUT_FILENO, "\033[0m", 4);
   }
   write(STDOUT_FILENO, "\r\n", 2);
@@ -1087,7 +1090,8 @@ void ush::Repl::drawElnNode(const char* name,
 
   Terminal::endColor();
 
-  Terminal::writeNewLine();
+  Terminal::goTostartOfLine();
+  Terminal::makeNewLine();
   m_elnNumber++;
 }
 

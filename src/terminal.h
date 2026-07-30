@@ -28,14 +28,21 @@ namespace ush
 
       static void endColor();
 
-      static void writeSpace();
+      static void makeNewLine();
 
-      static void writeNewLine();
+      static void goTostartOfLine();
+
+      static void writeSpace();
 
       static void writeIcon(const char8_t* iconName);
 
+      static void writeChar(const char* ch);
+
       static void writeText(const char* name, size_t size);
 
+      static void eraseEntireLine();
+
+      static void moveCursorToLineColumn(uint32_t row, uint32_t col);
     private:
       Terminal() = delete;
 
