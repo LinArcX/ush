@@ -1,13 +1,12 @@
 #ifndef USH_REPL_H
 #define USH_REPL_H
 
-#include "error.h"
 #include "box.h"
+#include "error.h"
 #include "terminal.h"
 
 #include <array>
-#include <filesystem>
-#include <vector>
+#include <string>
 
 constexpr uint32_t maxArgs = 64;
 constexpr uint32_t charsForLine = 1024;
@@ -70,43 +69,26 @@ namespace ush
 
     private:
       char c;
+
       uint32_t m_elnNumber = 1U;
-      //class Position {
-      //  public:
-      //    uint32_t x = 0U;
-      //    uint32_t y = 0U;
-      //};
-      //Position m_charPosition;
-      //Position m_cursorPosition;
 
       uint32_t m_charPosition = 1U;
+
       uint32_t m_cursorPosition = 1U;
  
       Box m_pwdBox;
+
       Box m_replBox;
+
       Box m_gitBox;
  
-      std::vector<std::string> m_dirsHistory;
-      std::vector<std::string> m_commandsHistory;
       std::array<char, charsForLine> m_chars {};
+
       std::array<char[charsForArg], maxArgs> m_args {};
 
 	    bool m_inDirHistoryTravelMode = true;
+
       bool m_inCommandHistoryTravelMode = true;
-	    uint32_t m_inDirHistoryLastIndexVisited = 0U;
-	    uint32_t m_inCommandHistoryLastIndexVisited = 0U;
-
-      // configs
-      bool saveFile(std::filesystem::path path,
-          std::string_view file,
-          std::string_view text);
-      void saveCommandHistory(std::string str);
-      void saveDirectoryHistory(std::string str);
-
-      bool readFile(const std::filesystem::path& path,
-        std::vector<std::string>& vec);
-      void readCommandHistory();
-      void readDirectoryHistory();
 
       // eln
       void showElns(std::string path);
@@ -132,4 +114,3 @@ namespace ush
   };
 }
 #endif // USH_REPL_H
-

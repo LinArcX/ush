@@ -1,9 +1,9 @@
 #include "repl.h"
 #include "icons.h"
+#include "file.h"
 
 #include <print>
 #include <stdio.h>
-#include <fstream>
 #include <unistd.h>
 #include <algorithm>
 #include <magic.h>
@@ -47,8 +47,8 @@ ush::Repl::Repl()
       // When it happens in a child-process, we exit from it and we just go to next line ready for another command in ush.
       std::signal(SIGINT, ush::Repl::SIGINTHandler);
 
-      readCommandHistory();
-      readDirectoryHistory();
+      File::readCommandHistory();
+      File::readDirectoryHistory();
     }
 }
 
@@ -154,8 +154,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
       // Alt+j - next dir history
       if (seq[0] == 'j') {
         if (m_inDirHistoryTravelMode == true) {
-          if (m_inDirHistoryLastIndexVisited < m_dirsHistory.size()) {
-            std::string item = m_dirsHistory[++m_inDirHistoryLastIndexVisited];
+          if (File::m_inDirHistoryLastIndexVisited < File::m_dirsHistory.size()) {
+            std::string item = File::m_dirsHistory[++File::m_inDirHistoryLastIndexVisited];
             size_t itemSize = item.size();
             if (itemSize > 0) {
               clearLine();
@@ -175,8 +175,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
       // Alt+k - previous dir history
       if (seq[0] == 'k') {
         if (m_inDirHistoryTravelMode == true) {
-          if (m_inDirHistoryLastIndexVisited > 0) {
-            std::string item = m_dirsHistory[--m_inDirHistoryLastIndexVisited];
+          if (File::m_inDirHistoryLastIndexVisited > 0) {
+            std::string item = File::m_dirsHistory[--File::m_inDirHistoryLastIndexVisited];
             size_t itemSize = item.size();
             if (itemSize > 0) {
               clearLine();
@@ -203,8 +203,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
         // Up - previous history
         if (extSeq1[0] == 'A') {
           if (m_inCommandHistoryTravelMode == true) {
-            if (m_inCommandHistoryLastIndexVisited > 0) {
-              std::string item = m_commandsHistory[--m_inCommandHistoryLastIndexVisited];
+            if (File::m_inCommandHistoryLastIndexVisited > 0) {
+              std::string item = File::m_commandsHistory[--File::m_inCommandHistoryLastIndexVisited];
               size_t itemSize = item.size();
               if (itemSize > 0) {
                 clearLine();
@@ -224,8 +224,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
         // Down - next history
         if (extSeq1[0] == 'B') {
           if (m_inCommandHistoryTravelMode == true) {
-            if (m_inCommandHistoryLastIndexVisited < m_commandsHistory.size()) {
-              std::string item = m_commandsHistory[++m_inCommandHistoryLastIndexVisited];
+            if (File::m_inCommandHistoryLastIndexVisited < File::m_commandsHistory.size()) {
+              std::string item = File::m_commandsHistory[++File::m_inCommandHistoryLastIndexVisited];
               size_t itemSize = item.size();
               if (itemSize > 0) {
                 clearLine();
@@ -372,8 +372,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
       m_inDirHistoryTravelMode = true;
       m_inCommandHistoryTravelMode = true;
 
-      readCommandHistory();
-      readDirectoryHistory();
+      File::readCommandHistory();
+      File::readDirectoryHistory();
 			return Error::eSuccess;
 		} else {
 		  // this is when you start to move cursor back and foth to put space/chars
@@ -514,7 +514,7 @@ ush::Error ush::Repl::launchBinary()
 
   if (argv[0] == std::string("cd")) {
     chdir(argv[1]);
-    saveDirectoryHistory(argv[1]);
+    File::saveDirectoryHistory(argv[1]);
   }
   else {
 	  int status;
@@ -541,7 +541,7 @@ ush::Error ush::Repl::launchBinary()
           command += argv[i];
           command += " ";
         }
-        saveCommandHistory(command);
+        File::saveCommandHistory(command);
 	  	} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 	  }
   }
@@ -571,7 +571,7 @@ ush::Error ush::Repl::cd()
   else {
     chdir(m_args[1]);
   }
-  saveDirectoryHistory(std::string("cd ") + m_args[1]);
+  File::saveDirectoryHistory(std::string("cd ") + m_args[1]);
 
   clearRepl();
   showElns(std::filesystem::current_path());
@@ -666,93 +666,6 @@ void ush::Repl::moveForwardToFirstSpaceAfterCurrentWord()
     }
     break;
   }
-}
-
-bool ush::Repl::readFile(const std::filesystem::path& path,
-  std::vector<std::string>& vec)
-{
-  std::ifstream file(path, std::ios::binary);
-  if (!file) {
-    return false;
-  }
-
-  std::string line;
-  while (std::getline(file, line)) {
-    vec.push_back(std::move(line));
-  }
-
-  return !file.bad(); // true unless an I/O error occurred
-}
-
-void ush::Repl::readCommandHistory()
-{
-  std::filesystem::path path 
-    = std::filesystem::path(std::getenv("HOME"))
-                                       / ".config"
-                                       / "ush"
-                                       / "history"
-                                       / "commands";
-  readFile(path, m_commandsHistory);
-  std::erase(m_commandsHistory, "");
-  m_inCommandHistoryLastIndexVisited = m_commandsHistory.size();
-}
-
-void ush::Repl::readDirectoryHistory()
-{
-  std::filesystem::path path 
-    = std::filesystem::path(std::getenv("HOME"))
-                                       / ".config"
-                                       / "ush"
-                                       / "history"
-                                       / "dirs";
-  readFile(path, m_dirsHistory);
-  std::erase(m_dirsHistory, "");
-  m_inDirHistoryLastIndexVisited = m_dirsHistory.size() - 1;
-}
-
-bool ush::Repl::saveFile(std::filesystem::path path,
-  std::string_view file,
-  std::string_view text)
-{
-    // Create parent directories if needed.
-    std::error_code ec;
-    std::filesystem::create_directories(path, ec);
-    if (ec) {
-        return false;
-    }
-
-    std::filesystem::path fullPath = path / file;
-
-    std::ofstream osfile(fullPath, std::ios::binary | std::ios::app);
-
-    if (!osfile) {
-        return false;
-    }
-
-    osfile.write(text.data(), static_cast<std::streamsize>(text.size()));
-    osfile.put('\n');
-
-    return osfile.good();
-}
-
-void ush::Repl::saveCommandHistory(std::string str)
-{
-  std::filesystem::path dir 
-    = std::filesystem::path(std::getenv("HOME")) 
-                                       / ".config" 
-                                       / "ush"
-                                       / "history";
-  saveFile(dir, "commands", str);
-}
-
-void ush::Repl::saveDirectoryHistory(std::string str)
-{
-  std::filesystem::path dir = 
-    std::filesystem::path(std::getenv("HOME")) 
-                                     / ".config" 
-                                     / "ush"
-                                     / "history";
-  saveFile(dir, "dirs", str);
 }
 
 bool ush::Repl::lineIsEmpty()
