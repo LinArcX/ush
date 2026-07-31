@@ -18,7 +18,8 @@ namespace ush
   class Repl
   {
     public:
-      Repl();
+      Error init();
+
       ~Repl();
 
       /**

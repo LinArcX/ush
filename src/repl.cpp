@@ -25,31 +25,33 @@ void ush::Repl::SIGINTHandler(int signal)
 }
 
 // public
-ush::Repl::Repl()
+ush::Error ush::Repl::init()
 {
-    m_pwdBox.draw(1,
-        1,
-        Terminal::getTerminalWindowSize().ws_col,
-        3); // 1 = top border, 1 = bottom border, 1 = content
+  // 1 = top border, 1 = bottom border, 1 = content
+  if (Error::eSuccess != m_pwdBox.draw(1, 1, Terminal::getTerminalWindowSize().ws_col, 3)) {
+    return Error::eError;
+  } 
 
-    m_replBox.draw(1,
-        m_pwdBox.m_height,
-        Terminal::getTerminalWindowSize().ws_col, 
-        Terminal::getTerminalWindowSize().ws_row - (m_pwdBox.m_height + m_gitBox.m_height));
+  if (Error::eSuccess !=  m_replBox.draw(1, m_pwdBox.m_height, Terminal::getTerminalWindowSize().ws_col, 
+      Terminal::getTerminalWindowSize().ws_row - (m_pwdBox.m_height + m_gitBox.m_height))) {
+    return Error::eError;
+  }
 
-    m_gitBox.draw(1,
-        m_replBox.m_height,
-        Terminal::getTerminalWindowSize().ws_col,
-        3);
- 
-    if (Terminal::enableRawMode() == Error::eSuccess) {
-      // SIGINIT is disabled in ush main process, and just child process are allowed to have SIGINIT.
-      // When it happens in a child-process, we exit from it and we just go to next line ready for another command in ush.
-      std::signal(SIGINT, ush::Repl::SIGINTHandler);
+  if (Error::eSuccess != m_gitBox.draw(1, m_replBox.m_height, Terminal::getTerminalWindowSize().ws_col, 3)) {
+    return Error::eError;
+  }
 
-      File::readCommandHistory();
-      File::readDirectoryHistory();
-    }
+  if (Error::eSuccess != Terminal::enableRawMode()) {
+    return Error::eError;
+  }
+
+  // SIGINIT is disabled in ush main process, and just child process are allowed to have SIGINIT.
+  // When it happens in a child-process, we exit from it and we just go to next line ready for another command in ush.
+  std::signal(SIGINT, ush::Repl::SIGINTHandler);
+
+  File::readCommandHistory();
+  File::readDirectoryHistory();
+  return Error::eSuccess;
 }
 
 ush::Repl::~Repl()
@@ -59,11 +61,11 @@ ush::Repl::~Repl()
 
 int ush::Repl::loop(void)
 {
-  m_replBox.moveCursor(m_replBox.m_col, m_replBox.m_row);
-  if (clearRepl() != Error::eSuccess) {
-    return -1;
-  }
-  showElns(std::filesystem::current_path());
+  //m_replBox.moveCursor(m_replBox.m_col, m_replBox.m_row);
+  //if (clearRepl() != Error::eSuccess) {
+  //  return -1;
+  //}
+  //showElns(std::filesystem::current_path());
 
   //while(true) {
   //  // reset arrays
