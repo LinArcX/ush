@@ -116,3 +116,18 @@ void ush::Terminal::moveCursorToLineColumn(uint32_t row, uint32_t col)
   writeText(str.data(), str.size());
   //write(STDOUT_FILENO, str.data(), str.size())
 }
+
+void ush::Terminal::moveCursorRightOneChar()
+{
+  write(STDOUT_FILENO, "\x1b[C", 3);
+}
+
+void ush::Terminal::moveCursorLeftOneChar()
+{
+  write(STDOUT_FILENO, "\x1b[D", 3);
+}
+
+void ush::Terminal::removePrevCharAndMoveCursorToLeft()
+{
+  write(STDOUT_FILENO, "\b \b", 3);
+}

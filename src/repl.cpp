@@ -95,7 +95,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
     // Ctrl-a: beginning of line
     if (c == 1) {
       while (m_cursorPosition > 0) {
-        write(STDOUT_FILENO, "\x1b[D", 3);
+        Terminal::moveCursorLeftOneChar();
+        //write(STDOUT_FILENO, "\x1b[D", 3);
         m_cursorPosition--;
       }
       continue;
@@ -104,7 +105,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
     // Ctrl-e: end of line
     if (c == 5) {
       while (m_cursorPosition < m_charPosition) {
-        write(STDOUT_FILENO, "\x1b[C", 3);
+        Terminal::moveCursorRightOneChar();
+        //write(STDOUT_FILENO, "\x1b[C", 3);
         m_cursorPosition++;
       }
       continue;
@@ -128,7 +130,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
     if (c == 127) {
       if (m_charPosition > 0) {
         --m_cursorPosition;
-        write(STDOUT_FILENO, "\b \b", 3);
+        Terminal::removePrevCharAndMoveCursorToLeft();
 
         --m_charPosition;
         m_chars[m_charPosition] = '\0';
@@ -159,7 +161,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
               clearLine();
             }
             for (size_t i = 0; i < itemSize; i++) {
-              write(STDOUT_FILENO, &item[i], 1);
+              Terminal::writeChar(&item[i]);
+              //write(STDOUT_FILENO, &item[i], 1);
               m_chars[m_cursorPosition] = item[i];
               m_cursorPosition++;
               m_charPosition++;
@@ -179,7 +182,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
               clearLine();
             }
             for (size_t i = 0; i < itemSize; i++) {
-              write(STDOUT_FILENO, &item[i], 1);
+              Terminal::writeChar(&item[i]);
+              //write(STDOUT_FILENO, &item[i], 1);
               m_chars[m_cursorPosition] = item[i];
               m_cursorPosition++;
               m_charPosition++;
@@ -206,7 +210,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
                 clearLine();
               }
               for (size_t i = 0; i < item.size(); i++) {
-                write(STDOUT_FILENO, &item[i], 1);
+                Terminal::writeChar(&item[i]);
+                //write(STDOUT_FILENO, &item[i], 1);
                 m_chars[m_cursorPosition] = item[i];
                 m_cursorPosition++;
                 m_charPosition++;
@@ -226,7 +231,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
                 clearLine();
               }
               for (size_t i = 0; i < itemSize; i++) {
-                write(STDOUT_FILENO, &item[i], 1);
+                Terminal::writeChar(&item[i]);
+                //write(STDOUT_FILENO, &item[i], 1);
                 m_chars[m_cursorPosition] = item[i];
                 m_cursorPosition++;
                 m_charPosition++;
@@ -245,7 +251,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
         // Right - next char
         if (extSeq1[0] == 'C') {
           if (m_cursorPosition < m_charPosition) {
-            write(STDOUT_FILENO, "\x1b[C", 3);
+            Terminal::moveCursorRightOneChar();
+            //write(STDOUT_FILENO, "\x1b[C", 3);
             m_cursorPosition++;
             m_inCommandHistoryTravelMode = false;
             m_inDirHistoryTravelMode = false;
@@ -256,7 +263,7 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
         // Left - previous char
         if (extSeq1[0] == 'D') {
           if (m_cursorPosition > 0) {
-            write(STDOUT_FILENO, "\x1b[D", 3);
+            Terminal::moveCursorRightOneChar();
             m_cursorPosition--;
             m_inCommandHistoryTravelMode = false;
             m_inDirHistoryTravelMode = false;
@@ -279,7 +286,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
           // Ctrl+Up
           if (extSeq2[2] == 'A') {
             if (m_inDirHistoryTravelMode == true) {
-              write(STDOUT_FILENO, "u", 1);
+              Terminal::writeChar("u");
+              //write(STDOUT_FILENO, "u", 1);
             }
  
             continue;
@@ -287,7 +295,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
 
           // Ctrl+Down
           if (extSeq2[2] == 'B') {
-            write(STDOUT_FILENO, "d", 1);
+            Terminal::writeChar("d");
+            //write(STDOUT_FILENO, "d", 1);
             continue;
           }
  
@@ -350,7 +359,9 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
 
 		// If we hit EOF, replace it with a null character and return.
 		if (c == '\r' || c == '\n') {
-			write(STDOUT_FILENO, "\r\n", 2);
+      Terminal::goTostartOfLine();
+      Terminal::makeNewLine();
+			//write(STDOUT_FILENO, "\r\n", 2);
 		  if (lineIsEmpty()) {
 		    resetLineVarsShowPrompt();
 		    continue;
@@ -374,15 +385,21 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
         ++m_cursorPosition;
         ++m_charPosition;
         m_chars[m_charPosition] = '\0';
-        write(STDOUT_FILENO, "\r", 1);
-        write(STDOUT_FILENO, "\x1b[2K", 4); // Clear line
-        write(STDOUT_FILENO, " > ", 3);
-        write(STDOUT_FILENO, m_chars.data(), m_charPosition);
+        Terminal::goTostartOfLine();
+        //write(STDOUT_FILENO, "\r", 1);
+        Terminal::eraseEntireLine();
+        //write(STDOUT_FILENO, "\x1b[2K", 4); // Clear line
+        std::string str = " > ";
+        Terminal::writeText(str.data(), str.size());
+        //write(STDOUT_FILENO, " > ", 3);
+        Terminal::writeText(m_chars.data(), m_charPosition);
+        //write(STDOUT_FILENO, m_chars.data(), m_charPosition);
 
         char buf[32];
         int n = std::snprintf(buf, sizeof(buf), "\r\x1b[%uC",
                       static_cast<unsigned>(3 + m_cursorPosition)); // 3 = prompt length
-        write(STDOUT_FILENO, buf, n);
+        Terminal::writeText(buf, n);
+        //write(STDOUT_FILENO, buf, n);
 		  }
 		  // this is the normal path, as you type, you move forward. it include chars and SPACE
 		  else {
@@ -390,7 +407,8 @@ ush::Error ush::Repl::handleEventsAndPopulateChars()
 
 			  m_chars[m_charPosition] = c;
 		    m_charPosition++;
-		    write(STDOUT_FILENO, &c, 1);
+        Terminal::writeChar(&c);
+		    //write(STDOUT_FILENO, &c, 1);
 		  }
       m_inCommandHistoryTravelMode = false;
       m_inDirHistoryTravelMode = false; 
@@ -538,9 +556,11 @@ void ush::Repl::resetLineVarsShowPrompt()
   m_charPosition = m_replBox.m_col;
   m_cursorPosition = m_replBox.m_col;
 
-  write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::hollowRightPointingSmallTriangle),
-    std::char_traits<char8_t>::length(Icons::hollowRightPointingSmallTriangle));
-  write(STDOUT_FILENO, " ", 1);
+  Terminal::writeIcon(Icons::hollowRightPointingSmallTriangle);
+  //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::hollowRightPointingSmallTriangle),
+  //  std::char_traits<char8_t>::length(Icons::hollowRightPointingSmallTriangle));
+  Terminal::writeSpace();
+  //write(STDOUT_FILENO, " ", 1);
 }
 
 ush::Error ush::Repl::cd()
@@ -576,13 +596,15 @@ void ush::Repl::moveBackToFirstCharOfWord()
   while(true) {
     if (m_cursorPosition > 0) {
       if (m_chars[m_cursorPosition] != 32 && m_chars[m_cursorPosition - 1] == 32) {
-        write(STDOUT_FILENO, "\x1b[D", 3);
+        Terminal::moveCursorLeftOneChar();
+        //write(STDOUT_FILENO, "\x1b[D", 3);
         m_cursorPosition--;
         break;
       }
 
       if (m_chars[m_cursorPosition - 1] != 32) {
-        write(STDOUT_FILENO, "\x1b[D", 3);
+        Terminal::moveCursorLeftOneChar();
+        //write(STDOUT_FILENO, "\x1b[D", 3);
         m_cursorPosition--;
         continue;
       }
@@ -597,11 +619,13 @@ void ush::Repl::moveBackToFirstNonSpaceChar()
   while(true) {
     if (m_cursorPosition > 0) {
       if (m_chars[m_cursorPosition - 1] == 32) {
-        write(STDOUT_FILENO, "\x1b[D", 3);
+        Terminal::moveCursorLeftOneChar();
+        //write(STDOUT_FILENO, "\x1b[D", 3);
         m_cursorPosition--;
         continue;
       }
-      write(STDOUT_FILENO, "\x1b[D", 3);
+      Terminal::moveCursorLeftOneChar();
+      //write(STDOUT_FILENO, "\x1b[D", 3);
       m_cursorPosition--;
       break;
     }
@@ -614,7 +638,8 @@ void ush::Repl::moveForwardToFirstNonSpaceChar()
   while(true) {
     if (m_cursorPosition < m_charPosition) {
       if (m_chars[m_cursorPosition + 1] == 32) {
-        write(STDOUT_FILENO, "\x1b[C", 3);
+        Terminal::moveCursorRightOneChar();
+        //write(STDOUT_FILENO, "\x1b[C", 3);
         m_cursorPosition++;
         continue;
       }
@@ -629,11 +654,13 @@ void ush::Repl::moveForwardToFirstSpaceAfterCurrentWord()
   while(true) {
     if (m_cursorPosition < m_charPosition) {
       if (m_chars[m_cursorPosition + 1] != 32) {
-        write(STDOUT_FILENO, "\x1b[C", 3);
+        Terminal::moveCursorRightOneChar();
+        //write(STDOUT_FILENO, "\x1b[C", 3);
         m_cursorPosition++;
         continue;
       }
-      write(STDOUT_FILENO, "\x1b[C", 3);
+      Terminal::moveCursorRightOneChar();
+      //write(STDOUT_FILENO, "\x1b[C", 3);
       m_cursorPosition++;
       break;
     }
@@ -1068,12 +1095,16 @@ void ush::Repl::showElns(std::string path)
   }
 
   for (size_t i = 0; i < Terminal::getTerminalWindowSize().ws_col; i++) {
-    write(STDOUT_FILENO, "\033[38;2;179;179;179m", 20);
+    //write(STDOUT_FILENO, "\033[38;2;179;179;179m", 20);
+    Terminal::startColor(Terminal::EColorAttr::eForeground, 179, 179, 179);
     Terminal::writeChar("-");
     //write(STDOUT_FILENO, "-", 1);
-    write(STDOUT_FILENO, "\033[0m", 4);
+    Terminal::endColor();
+    //write(STDOUT_FILENO, "\033[0m", 4);
   }
-  write(STDOUT_FILENO, "\r\n", 2);
+  Terminal::goTostartOfLine();
+  Terminal::makeNewLine();
+  //write(STDOUT_FILENO, "\r\n", 2);
 }
 
 void ush::Repl::drawElnNode(const char* name,

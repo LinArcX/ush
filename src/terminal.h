@@ -43,6 +43,12 @@ namespace ush
       static void eraseEntireLine();
 
       static void moveCursorToLineColumn(uint32_t row, uint32_t col);
+
+      static void moveCursorRightOneChar();
+
+      static void moveCursorLeftOneChar();
+
+      static void removePrevCharAndMoveCursorToLeft();
     private:
       Terminal() = delete;
 

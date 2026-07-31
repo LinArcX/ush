@@ -15,7 +15,7 @@ ush::Error ush::Box::moveCursor(uint32_t row, uint32_t col)
     return Error::eError;
   }
 
-  m_terminal.moveCursorToLineColumn(row, col);
+  Terminal::moveCursorToLineColumn(row, col);
   return Error::eSuccess;
 }
 
@@ -25,7 +25,7 @@ ush::Error ush::Box::drawContent(uint32_t& row, uint32_t& col)
   if(moveCursor(row, col++) != Error::eSuccess) {
     return Error::eError;
   }
-  m_terminal.writeIcon(Icons::left);
+  Terminal::writeIcon(Icons::left);
   //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::left),
   //  std::char_traits<char8_t>::length(Icons::left));
 
@@ -38,15 +38,15 @@ ush::Error ush::Box::drawContent(uint32_t& row, uint32_t& col)
   if (moveCursor(row, col++) != Error::eSuccess) {
     return Error::eError;
   }
-  m_terminal.writeIcon(Icons::right);
+  Terminal::writeIcon(Icons::right);
   //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::right),
   //  std::char_traits<char8_t>::length(Icons::right));
 
   if (moveCursor(row++, col) != Error::eSuccess) {
     return Error::eError;
   }
-  m_terminal.goTostartOfLine();
-  m_terminal.makeNewLine();
+  Terminal::goTostartOfLine();
+  Terminal::makeNewLine();
   //write(STDOUT_FILENO, "\r\n", 2);
   col = m_col;
 
@@ -71,7 +71,7 @@ ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t h
     if (moveCursor(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
-    m_terminal.writeIcon(Icons::topLeft);
+    Terminal::writeIcon(Icons::topLeft);
 
     // write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::topLeft),
     //   std::char_traits<char8_t>::length(Icons::topLeft));
@@ -81,7 +81,7 @@ ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t h
       if (moveCursor(row, col++) != Error::eSuccess) {
         return Error::eError;
       }
-      m_terminal.writeIcon(Icons::top);
+      Terminal::writeIcon(Icons::top);
       //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::top),
       //  std::char_traits<char8_t>::length(Icons::top));
     }
@@ -90,15 +90,15 @@ ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t h
     if (moveCursor(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
-    m_terminal.writeIcon(Icons::topRight);
+    Terminal::writeIcon(Icons::topRight);
     //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::topRight),
     //  std::char_traits<char8_t>::length(Icons::topRight));
 
     if (moveCursor(row++, col) != Error::eSuccess) {
       return Error::eError;
     }
-    m_terminal.goTostartOfLine();
-    m_terminal.makeNewLine();
+    Terminal::goTostartOfLine();
+    Terminal::makeNewLine();
     //write(STDOUT_FILENO, "\r\n", 2);
     col = m_col;
   }
@@ -116,7 +116,7 @@ ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t h
     if (moveCursor(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
-    m_terminal.writeIcon(Icons::bottomLeft);
+    Terminal::writeIcon(Icons::bottomLeft);
       
     //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::bottomLeft),
     //  std::char_traits<char8_t>::length(Icons::bottomLeft));
@@ -126,7 +126,7 @@ ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t h
       if (moveCursor(row, col++) != Error::eSuccess) {
         return Error::eError;
       }
-      m_terminal.writeIcon(Icons::bottom);
+      Terminal::writeIcon(Icons::bottom);
       //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::bottom),
       //  std::char_traits<char8_t>::length(Icons::bottom));
     }
@@ -135,15 +135,15 @@ ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t h
     if (moveCursor(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
-    m_terminal.writeIcon(Icons::bottomRight);
+    Terminal::writeIcon(Icons::bottomRight);
     //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::bottomRight),
     //  std::char_traits<char8_t>::length(Icons::bottomRight));
 
     if (moveCursor(row++, col) != Error::eSuccess) {
       return Error::eError;
     }
-    m_terminal.goTostartOfLine();
-    m_terminal.makeNewLine();
+    Terminal::goTostartOfLine();
+    Terminal::makeNewLine();
     //write(STDOUT_FILENO, "\r\n", 2);
     col = m_col;
   }
@@ -203,8 +203,8 @@ ush::Error ush::Box::clearLine(uint32_t row, uint32_t col)
   if (moveCursor(row, col) != Error::eSuccess) {
     return Error::eError;
   }
-  m_terminal.goTostartOfLine();
-  m_terminal.eraseEntireLine();
+  Terminal::goTostartOfLine();
+  Terminal::eraseEntireLine();
 
   // re-draw current row
   if (drawContent(row, col) != Error::eSuccess) {
@@ -228,7 +228,7 @@ ush::Error ush::Box::writeNewLine()
   if (moveCursor(m_position.m_row++, m_position.m_col) != Error::eSuccess) {
     return Error::eError;
   }
-  m_terminal.makeNewLine();
+  Terminal::makeNewLine();
   return Error::eSuccess;
 }
 
