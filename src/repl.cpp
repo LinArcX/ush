@@ -39,18 +39,63 @@ ush::Error ush::Repl::init()
   File::readDirectoryHistory();
 
   // 1 = top border, 1 = bottom border, 1 = content
-  if (Error::eSuccess != m_pwdBox.drawBorder(1, 1, Terminal::getTerminalWindowSize().ws_col, 3)) {
+  if (Error::eSuccess != m_pwdBox.drawBorder(1,
+        1,
+        Terminal::getTerminalWindowSize().ws_col,
+        3,
+        u8"\u256D", // ╭ topLeft ┌ (\u250C) 
+        u8"\u2500", // ─ top
+        u8"\u256E", // ╮ topRight ┐ (\u2510)
+        
+        u8"\u2502", // │ left
+        u8"\u2502", // │ right
+
+        u8"\u2570", // ╰ bottomLeft └ (\u2514)
+        u8"\u2500", // ─ bottom
+        u8"\u256F"  // ╯ bottomRight ┘ (\u2518)
+        ))
+  {
     return Error::eError;
   } 
 
-  //if (Error::eSuccess !=  m_replBox.draw(1, m_pwdBox.m_height, Terminal::getTerminalWindowSize().ws_col, 
-  //    Terminal::getTerminalWindowSize().ws_row - (m_pwdBox.m_height + m_gitBox.m_height))) {
-  //  return Error::eError;
-  //}
+  if (Error::eSuccess != m_replBox.drawBorder(m_pwdBox.m_borderPosition.m_height,
+        1,
+        Terminal::getTerminalWindowSize().ws_col, 
+        //7,
+        Terminal::getTerminalWindowSize().ws_row - (m_pwdBox.m_borderPosition.m_height + m_gitBox.m_borderPosition.m_height),
+        u8"\u251C", // ├ topLeft
+        u8"\u2500", // ─ top
+        u8"\u2524", // ┤ topRight
+        
+        u8"\u2502", // │ left
+        u8"\u2502", // │ right
 
-  //if (Error::eSuccess != m_gitBox.draw(1, m_replBox.m_height, Terminal::getTerminalWindowSize().ws_col, 3)) {
-  //  return Error::eError;
-  //}
+        u8"\u251C", // ├  bottomLeft
+        u8"\u2500", // ─ bottom
+        u8"\u2524"  // ┤  bottomRight
+        ))
+  {
+    return Error::eError;
+  }
+
+  if (Error::eSuccess != m_gitBox.drawBorder(m_replBox.m_borderPosition.m_height,
+        1,
+        Terminal::getTerminalWindowSize().ws_col,
+        3,
+        u8"\u251C", // ├  topLeft
+        u8"\u2500", // ─ top
+        u8"\u2524", // ┤ topRight
+        
+        u8"\u2502", // │ left
+        u8"\u2502", // │ right
+
+        u8"\u2570", // ╰ bottomLeft └ (\u2514)
+        u8"\u2500", // ─ bottom
+        u8"\u256F"  // ╯ bottomRight ┘ (\u2518)
+        ))
+  {
+    return Error::eError;
+  }
 
   return Error::eSuccess;
 }

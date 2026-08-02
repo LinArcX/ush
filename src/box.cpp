@@ -30,7 +30,18 @@ ush::Error ush::Box::moveCursorInContentArea(uint32_t row, uint32_t col)
   return Error::eSuccess;
 }
 
-ush::Error ush::Box::drawBorder(uint32_t row, uint32_t col, uint32_t width, uint32_t height)
+ush::Error ush::Box::drawBorder(uint32_t row,
+  uint32_t col,
+  uint32_t width,
+  uint32_t height,
+  const char8_t* topLeft,
+  const char8_t* top,
+  const char8_t* topRight,
+  const char8_t* left,
+  const char8_t* right,
+  const char8_t* bottomLeft,
+  const char8_t* bottom,
+  const char8_t* bottomRight)
 {
   m_borderPosition.m_row = row;
   m_borderPosition.m_col = col;
@@ -42,27 +53,30 @@ ush::Error ush::Box::drawBorder(uint32_t row, uint32_t col, uint32_t width, uint
   m_contentPosition.m_width = m_borderPosition.m_width - 2;
   m_contentPosition.m_height = m_borderPosition.m_height - 2;
 
+  m_iconLeft = left;
+  m_iconRight = right;
+
   // top border
   {
     // top-left
     if (Error::eSuccess != moveCursorInBorderArea(row, col++)) {
       return Error::eError;
     }
-    Terminal::writeIcon(Icons::topLeft);
+    Terminal::writeIcon(topLeft);
 
     // top
     for (uint32_t i = col; i < m_borderPosition.m_width; i++) {
       if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
         return Error::eError;
       }
-      Terminal::writeIcon(Icons::top);
+      Terminal::writeIcon(top);
     }
 
     // top-right
     if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
-    Terminal::writeIcon(Icons::topRight);
+    Terminal::writeIcon(topRight);
 
     // go to beginning of new line
     col = m_borderPosition.m_col;
@@ -74,7 +88,7 @@ ush::Error ush::Box::drawBorder(uint32_t row, uint32_t col, uint32_t width, uint
   }
 
   // content border
-  for (uint32_t i = 1; i < m_borderPosition.m_height - 1; i++) {
+  for (uint32_t i = m_borderPosition.m_row; i < m_borderPosition.m_height - 1; i++) {
     if (drawBorderContent(row, col) != Error::eSuccess) {
       return Error::eError;
     }
@@ -86,21 +100,21 @@ ush::Error ush::Box::drawBorder(uint32_t row, uint32_t col, uint32_t width, uint
     if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
-    Terminal::writeIcon(Icons::bottomLeft);
+    Terminal::writeIcon(bottomLeft);
 
     // bottom
     for (uint32_t i = col; i < m_borderPosition.m_width; i++) {
       if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
         return Error::eError;
       }
-      Terminal::writeIcon(Icons::bottom);
+      Terminal::writeIcon(bottom);
     }
 
     // bottom-right
     if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
-    Terminal::writeIcon(Icons::bottomRight);
+    Terminal::writeIcon(bottomRight);
 
     // go to beginning of new line
     col = m_borderPosition.m_col;
@@ -221,7 +235,7 @@ ush::Error ush::Box::drawBorderContent(uint32_t& row, uint32_t& col)
   if(moveCursorInBorderArea(row, col++) != Error::eSuccess) {
     return Error::eError;
   }
-  Terminal::writeIcon(Icons::left);
+  Terminal::writeIcon(m_iconLeft);
 
   // right
   col = col + (m_borderPosition.m_width - 2);
@@ -232,7 +246,7 @@ ush::Error ush::Box::drawBorderContent(uint32_t& row, uint32_t& col)
   if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
     return Error::eError;
   }
-  Terminal::writeIcon(Icons::right);
+  Terminal::writeIcon(m_iconRight);
 
   // go to beginning of new line
   col = m_borderPosition.m_col;
