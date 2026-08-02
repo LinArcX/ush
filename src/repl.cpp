@@ -61,7 +61,6 @@ ush::Error ush::Repl::init()
   if (Error::eSuccess != m_replBox.drawBorder(m_pwdBox.m_borderPosition.m_height,
         1,
         Terminal::getTerminalWindowSize().ws_col, 
-        //7,
         Terminal::getTerminalWindowSize().ws_row - (m_pwdBox.m_borderPosition.m_height + m_gitBox.m_borderPosition.m_height),
         u8"\u251C", // ├ topLeft
         u8"\u2500", // ─ top

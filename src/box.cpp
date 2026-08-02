@@ -6,7 +6,7 @@
 
 ush::Error ush::Box::moveCursorInBorderArea(uint32_t row, uint32_t col)
 {
-  if(row < m_borderPosition.m_row || row > m_borderPosition.m_height) {
+  if(row < m_borderPosition.m_row || row > (m_borderPosition.m_row + m_borderPosition.m_height)) {
     return Error::eError;
   }
   if(col < m_borderPosition.m_col || col > m_borderPosition.m_width) {
@@ -19,7 +19,7 @@ ush::Error ush::Box::moveCursorInBorderArea(uint32_t row, uint32_t col)
 
 ush::Error ush::Box::moveCursorInContentArea(uint32_t row, uint32_t col)
 {
-  if(row < m_contentPosition.m_row || row > m_contentPosition.m_height) {
+  if(row < m_contentPosition.m_row || row > (m_contentPosition.m_row + m_contentPosition.m_height)) {
     return Error::eError;
   }
   if(col < m_contentPosition.m_col || col > m_contentPosition.m_width) {
@@ -88,7 +88,7 @@ ush::Error ush::Box::drawBorder(uint32_t row,
   }
 
   // content border
-  for (uint32_t i = m_borderPosition.m_row; i < m_borderPosition.m_height - 1; i++) {
+  for (uint32_t i = m_borderPosition.m_row + 1; i < (m_borderPosition.m_row + m_borderPosition.m_height) - 1; i++) {
     if (drawBorderContent(row, col) != Error::eSuccess) {
       return Error::eError;
     }

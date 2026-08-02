@@ -7,12 +7,12 @@ namespace ush
 {
   enum class Error : uint32_t
   {
-    eError,
-    eSuccess,
-    eExit,
-    eUnknown,
-    eClearScreen,
-    eClearLine,
+    eUnknown = 13,
+    eError = 21,
+    eSuccess = 0,
+    eExit = 89,
+    eClearScreen = 1,
+    eClearLine = 2,
   };
 }
 
