@@ -11,16 +11,6 @@ namespace ush
   class Box 
   {
     public:
-      uint32_t m_row; // top horizontal border, draws here
- 
-      uint32_t m_col; // left vertical border, draws here 
-
-      uint32_t m_width; // right vertical border, draws here
-      
-      uint32_t m_height; // bottom horizontal border, draws here
-
-      //Terminal m_terminal;
-
       class Position{
         public:
           // Box::m_row + 1 --> because of top border
@@ -35,17 +25,15 @@ namespace ush
           // Box::m_height - 2 --> because of top and bottom borders
           uint32_t m_height;
       };
-      Position m_position;
+      Position m_borderPosition;
+
+      Position m_contentPosition;
  
-      Error moveCursor(uint32_t row, uint32_t col);
+      Error moveCursorInBorderArea(uint32_t row, uint32_t col);
 
-      Error draw(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+      Error moveCursorInContentArea(uint32_t row, uint32_t col);
 
-      Error drawContent(uint32_t& row, uint32_t& col);
-
-      Error clearBox(void);
-
-      Error clearLine(uint32_t row, uint32_t col);
+      Error drawBorder(uint32_t row, uint32_t col, uint32_t width, uint32_t height);
 
       Error writeSpace();
 
@@ -55,15 +43,12 @@ namespace ush
 
       Error writeText(const char* name, size_t size);
 
+      Error clearLine(uint32_t row, uint32_t col);
+
+      Error clearBoxContent(void);
+
     private:
+      Error drawBorderContent(uint32_t& row, uint32_t& col);
   };
 }
 #endif // USH_BOX_H
-
-//#include <termio.h>
-//struct Rect {
-//  uint16_t x;
-//  uint16_t y;
-//  uint16_t width;
-//  uint16_t height;
-//};

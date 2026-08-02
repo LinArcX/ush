@@ -27,20 +27,6 @@ void ush::Repl::SIGINTHandler(int signal)
 // public
 ush::Error ush::Repl::init()
 {
-  // 1 = top border, 1 = bottom border, 1 = content
-  if (Error::eSuccess != m_pwdBox.draw(1, 1, Terminal::getTerminalWindowSize().ws_col, 3)) {
-    return Error::eError;
-  } 
-
-  if (Error::eSuccess !=  m_replBox.draw(1, m_pwdBox.m_height, Terminal::getTerminalWindowSize().ws_col, 
-      Terminal::getTerminalWindowSize().ws_row - (m_pwdBox.m_height + m_gitBox.m_height))) {
-    return Error::eError;
-  }
-
-  if (Error::eSuccess != m_gitBox.draw(1, m_replBox.m_height, Terminal::getTerminalWindowSize().ws_col, 3)) {
-    return Error::eError;
-  }
-
   if (Error::eSuccess != Terminal::enableRawMode()) {
     return Error::eError;
   }
@@ -51,6 +37,21 @@ ush::Error ush::Repl::init()
 
   File::readCommandHistory();
   File::readDirectoryHistory();
+
+  // 1 = top border, 1 = bottom border, 1 = content
+  if (Error::eSuccess != m_pwdBox.drawBorder(1, 1, Terminal::getTerminalWindowSize().ws_col, 3)) {
+    return Error::eError;
+  } 
+
+  //if (Error::eSuccess !=  m_replBox.draw(1, m_pwdBox.m_height, Terminal::getTerminalWindowSize().ws_col, 
+  //    Terminal::getTerminalWindowSize().ws_row - (m_pwdBox.m_height + m_gitBox.m_height))) {
+  //  return Error::eError;
+  //}
+
+  //if (Error::eSuccess != m_gitBox.draw(1, m_replBox.m_height, Terminal::getTerminalWindowSize().ws_col, 3)) {
+  //  return Error::eError;
+  //}
+
   return Error::eSuccess;
 }
 
@@ -554,9 +555,9 @@ ush::Error ush::Repl::launchBinary()
 void ush::Repl::resetLineVarsShowPrompt()
 {
   // reset variables and show prompt again
-  m_replBox.moveCursor(m_replBox.m_col, m_replBox.m_row);
-  m_charPosition = m_replBox.m_col;
-  m_cursorPosition = m_replBox.m_col;
+  m_replBox.moveCursorInContentArea(m_replBox.m_contentPosition.m_col, m_replBox.m_contentPosition.m_row);
+  m_charPosition = m_replBox.m_contentPosition.m_col;
+  m_cursorPosition = m_replBox.m_contentPosition.m_col;
 
   Terminal::writeIcon(Icons::hollowRightPointingSmallTriangle);
   //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::hollowRightPointingSmallTriangle),
@@ -1043,7 +1044,7 @@ void ush::Repl::drawElnNode(const char* name,
 
 ush::Error ush::Repl::clearRepl(void)
 {
-  if (m_replBox.clearBox() != Error::eSuccess) {
+  if (m_replBox.clearBoxContent() != Error::eSuccess) {
     return Error::eError;
   }
 
@@ -1054,7 +1055,7 @@ ush::Error ush::Repl::clearRepl(void)
  
 ush::Error ush::Repl::clearLine(void)
 {
-  if (m_replBox.clearLine(m_replBox.m_row, m_replBox.m_col) != Error::eSuccess) {
+  if (m_replBox.clearLine(m_replBox.m_contentPosition.m_row, m_replBox.m_contentPosition.m_col) != Error::eSuccess) {
     return Error::eError;
   }
 

@@ -3,17 +3,25 @@
 #include <unistd.h>
 #include <format>
 #include <string>
+#include <error.h>
 #include <string_view>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 winsize ush::Terminal::m_ws = {};
 termios ush::Terminal::m_original = {};
 
 ush::Error ush::Terminal::Terminal::requestGetTerminalWindowSize()
 {
-  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &m_ws) != -1 ) {
+  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &m_ws) == -1 ) {
+    perror("ioctl");
+    //printf("errno: %d", errno);
+    return Error::eError;
+  }
+  else {
+    printf(">>> ioctl initilized with col: %d, row: %d\n", m_ws.ws_col, m_ws.ws_row);
     return Error::eSuccess;
   }
-  return Error::eError;
 }
 
 ush::Error ush::Terminal::enableRawMode()

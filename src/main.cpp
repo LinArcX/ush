@@ -3,17 +3,14 @@
 
 int main(int argc, char** argv)
 {
-  int result = -1;
-
   if (ush::Error::eSuccess != ush::Terminal::requestGetTerminalWindowSize()) {
-    return result;
+    return -1;
   }
 
   ush::Repl repl;
   if (ush::Error::eSuccess != repl.init()) {
-    return result;
+    return -1;
   }
 
-  result = repl.loop();
-  return result;
+  return repl.loop();
 }

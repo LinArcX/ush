@@ -4,14 +4,12 @@
 
 #include <unistd.h>
 
-ush::Error ush::Box::moveCursor(uint32_t row, uint32_t col)
+ush::Error ush::Box::moveCursorInBorderArea(uint32_t row, uint32_t col)
 {
-  //  Terminal::getTerminalWindowSize().ws_row
-  //   col > Terminal::getTerminalWindowSize().ws_col
-  if(row < m_row || row > m_position.m_row) {
+  if(row < m_borderPosition.m_row || row > m_borderPosition.m_height) {
     return Error::eError;
   }
-  if(col < m_col || row > m_position.m_col) {
+  if(col < m_borderPosition.m_col || col > m_borderPosition.m_width) {
     return Error::eError;
   }
 
@@ -19,93 +17,65 @@ ush::Error ush::Box::moveCursor(uint32_t row, uint32_t col)
   return Error::eSuccess;
 }
 
-ush::Error ush::Box::drawContent(uint32_t& row, uint32_t& col)
+ush::Error ush::Box::moveCursorInContentArea(uint32_t row, uint32_t col)
 {
-  // left
-  if(moveCursor(row, col++) != Error::eSuccess) {
+  if(row < m_contentPosition.m_row || row > m_contentPosition.m_height) {
     return Error::eError;
   }
-  Terminal::writeIcon(Icons::left);
-  //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::left),
-  //  std::char_traits<char8_t>::length(Icons::left));
-
-  // right
-  col = col + (m_width - 2);
-  if (moveCursor(row, col) != Error::eSuccess) {
+  if(col < m_contentPosition.m_col || col > m_contentPosition.m_width) {
     return Error::eError;
   }
 
-  if (moveCursor(row, col++) != Error::eSuccess) {
-    return Error::eError;
-  }
-  Terminal::writeIcon(Icons::right);
-  //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::right),
-  //  std::char_traits<char8_t>::length(Icons::right));
-
-  if (moveCursor(row++, col) != Error::eSuccess) {
-    return Error::eError;
-  }
-  Terminal::goTostartOfLine();
-  Terminal::makeNewLine();
-  //write(STDOUT_FILENO, "\r\n", 2);
-  col = m_col;
-
+  Terminal::moveCursorToLineColumn(row, col);
   return Error::eSuccess;
 }
 
-ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t height)
+ush::Error ush::Box::drawBorder(uint32_t row, uint32_t col, uint32_t width, uint32_t height)
 {
-  m_col = col;
-  m_row = row;
-  m_width = width;
-  m_height = height;
+  m_borderPosition.m_row = row;
+  m_borderPosition.m_col = col;
+  m_borderPosition.m_width = width;
+  m_borderPosition.m_height = height;
 
-  m_position.m_row = m_row + 1;
-  m_position.m_col = m_col + 1;
-  m_position.m_width = m_width - 2;
-  m_position.m_height = m_height - 2;
+  m_contentPosition.m_row = m_borderPosition.m_row + 1;
+  m_contentPosition.m_col = m_borderPosition.m_col + 1;
+  m_contentPosition.m_width = m_borderPosition.m_width - 2;
+  m_contentPosition.m_height = m_borderPosition.m_height - 2;
 
   // top border
   {
     // top-left
-    if (moveCursor(row, col++) != Error::eSuccess) {
+    if (Error::eSuccess != moveCursorInBorderArea(row, col++)) {
       return Error::eError;
     }
     Terminal::writeIcon(Icons::topLeft);
 
-    // write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::topLeft),
-    //   std::char_traits<char8_t>::length(Icons::topLeft));
-
     // top
-    for (uint32_t i = col; i < m_width; i++) {
-      if (moveCursor(row, col++) != Error::eSuccess) {
+    for (uint32_t i = col; i < m_borderPosition.m_width; i++) {
+      if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
         return Error::eError;
       }
       Terminal::writeIcon(Icons::top);
-      //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::top),
-      //  std::char_traits<char8_t>::length(Icons::top));
     }
 
     // top-right
-    if (moveCursor(row, col++) != Error::eSuccess) {
+    if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
     Terminal::writeIcon(Icons::topRight);
-    //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::topRight),
-    //  std::char_traits<char8_t>::length(Icons::topRight));
 
-    if (moveCursor(row++, col) != Error::eSuccess) {
+    // go to beginning of new line
+    col = m_borderPosition.m_col;
+    if (moveCursorInBorderArea(row++, col) != Error::eSuccess) {
       return Error::eError;
     }
     Terminal::goTostartOfLine();
     Terminal::makeNewLine();
-    //write(STDOUT_FILENO, "\r\n", 2);
-    col = m_col;
   }
 
   // content border
-  for (uint32_t i = 1; i < m_height - 1; i++) {
-    if (drawContent(row, col) != Error::eSuccess) {
+  for (uint32_t i = 1; i < m_borderPosition.m_height - 1; i++) {
+    if (drawBorderContent(row, col) != Error::eSuccess) {
       return Error::eError;
     }
   }
@@ -113,44 +83,37 @@ ush::Error ush::Box::draw(uint32_t col, uint32_t row, uint32_t width, uint32_t h
   // bottom border
   {
     // bottom-left
-    if (moveCursor(row, col++) != Error::eSuccess) {
+    if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
     Terminal::writeIcon(Icons::bottomLeft);
-      
-    //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::bottomLeft),
-    //  std::char_traits<char8_t>::length(Icons::bottomLeft));
 
     // bottom
-    for (uint32_t i = col; i < m_width; i++) {
-      if (moveCursor(row, col++) != Error::eSuccess) {
+    for (uint32_t i = col; i < m_borderPosition.m_width; i++) {
+      if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
         return Error::eError;
       }
       Terminal::writeIcon(Icons::bottom);
-      //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::bottom),
-      //  std::char_traits<char8_t>::length(Icons::bottom));
     }
 
     // bottom-right
-    if (moveCursor(row, col++) != Error::eSuccess) {
+    if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
       return Error::eError;
     }
     Terminal::writeIcon(Icons::bottomRight);
-    //write(STDOUT_FILENO, reinterpret_cast<const char*>(Icons::bottomRight),
-    //  std::char_traits<char8_t>::length(Icons::bottomRight));
 
-    if (moveCursor(row++, col) != Error::eSuccess) {
+    // go to beginning of new line
+    col = m_borderPosition.m_col;
+    if (moveCursorInBorderArea(row++, col) != Error::eSuccess) {
       return Error::eError;
     }
     Terminal::goTostartOfLine();
     Terminal::makeNewLine();
-    //write(STDOUT_FILENO, "\r\n", 2);
-    col = m_col;
   }
   return Error::eSuccess;
 }
 
-ush::Error ush::Box::clearBox(void)
+ush::Error ush::Box::clearBoxContent(void)
 {
 #if __windows__ || defined (WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
   HANDLE hStdout;
@@ -189,8 +152,8 @@ ush::Error ush::Box::clearBox(void)
 
   SetConsoleCursorPosition(hStdout, csbi.dwCursorPosition);
 #elif __linux__
-  for (size_t i = ++m_row; i < m_height - 1; i++) {
-    if (clearLine(i, m_col) != Error::eSuccess) {
+  for (size_t currentRow = m_contentPosition.m_row; currentRow < m_contentPosition.m_height; currentRow++) {
+    if (clearLine(currentRow, m_contentPosition.m_col) != Error::eSuccess) {
       return Error::eError;
     }
   }
@@ -200,14 +163,14 @@ ush::Error ush::Box::clearBox(void)
  
 ush::Error ush::Box::clearLine(uint32_t row, uint32_t col)
 {
-  if (moveCursor(row, col) != Error::eSuccess) {
+  if (moveCursorInContentArea(row, col) != Error::eSuccess) {
     return Error::eError;
   }
   Terminal::goTostartOfLine();
   Terminal::eraseEntireLine();
 
   // re-draw current row
-  if (drawContent(row, col) != Error::eSuccess) {
+  if (drawBorderContent(row, col) != Error::eSuccess) {
     return Error::eError;
   }
 
@@ -216,7 +179,7 @@ ush::Error ush::Box::clearLine(uint32_t row, uint32_t col)
 
 ush::Error ush::Box::writeSpace()
 {
-  if (moveCursor(m_position.m_row, m_position.m_col++) != Error::eSuccess) {
+  if (moveCursorInContentArea(m_contentPosition.m_row, m_contentPosition.m_col++) != Error::eSuccess) {
     return Error::eError;
   }
   Terminal::writeSpace();
@@ -225,7 +188,7 @@ ush::Error ush::Box::writeSpace()
 
 ush::Error ush::Box::writeNewLine()
 {
-  if (moveCursor(m_position.m_row++, m_position.m_col) != Error::eSuccess) {
+  if (moveCursorInContentArea(m_contentPosition.m_row++, m_contentPosition.m_col) != Error::eSuccess) {
     return Error::eError;
   }
   Terminal::makeNewLine();
@@ -234,7 +197,7 @@ ush::Error ush::Box::writeNewLine()
 
 ush::Error ush::Box::writeIcon(const char8_t* iconName)
 {
-  if (moveCursor(m_position.m_row, m_position.m_col++) != Error::eSuccess) {
+  if (moveCursorInContentArea(m_contentPosition.m_row, m_contentPosition.m_col++) != Error::eSuccess) {
     return Error::eError;
   }
   Terminal::writeIcon(iconName);
@@ -243,11 +206,41 @@ ush::Error ush::Box::writeIcon(const char8_t* iconName)
 
 ush::Error ush::Box::writeText(const char* name, size_t size)
 {
-  if (moveCursor(m_position.m_row, m_position.m_col) != Error::eSuccess) {
+  if (moveCursorInContentArea(m_contentPosition.m_row, m_contentPosition.m_col) != Error::eSuccess) {
     return Error::eError;
   }
-  m_position.m_col += size;
+  m_contentPosition.m_col += size;
 
   Terminal::writeText(name, size);
+  return Error::eSuccess;
+}
+
+ush::Error ush::Box::drawBorderContent(uint32_t& row, uint32_t& col)
+{
+  // left
+  if(moveCursorInBorderArea(row, col++) != Error::eSuccess) {
+    return Error::eError;
+  }
+  Terminal::writeIcon(Icons::left);
+
+  // right
+  col = col + (m_borderPosition.m_width - 2);
+  if (moveCursorInBorderArea(row, col) != Error::eSuccess) {
+    return Error::eError;
+  }
+
+  if (moveCursorInBorderArea(row, col++) != Error::eSuccess) {
+    return Error::eError;
+  }
+  Terminal::writeIcon(Icons::right);
+
+  // go to beginning of new line
+  col = m_borderPosition.m_col;
+  if (moveCursorInBorderArea(row++, col) != Error::eSuccess) {
+    return Error::eError;
+  }
+  Terminal::goTostartOfLine();
+  Terminal::makeNewLine();
+
   return Error::eSuccess;
 }
